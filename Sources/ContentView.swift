@@ -60,16 +60,18 @@ struct ArtworkView: View {
     var image: UIImage?
     var radius: CGFloat = 12
     var body: some View {
-        Group {
-            if let image {
-                Image(uiImage: image).resizable().scaledToFill()
-            } else {
-                LinearGradient(colors: [Color.accentColor, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .overlay { Image(systemName: "music.note").font(.title).foregroundStyle(.white.opacity(0.85)) }
+        // Clear square defines the layout; the image only fills it (never widens the parent).
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                if let image {
+                    Image(uiImage: image).resizable().scaledToFill()
+                } else {
+                    LinearGradient(colors: [Color.accentColor, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        .overlay { Image(systemName: "music.note").font(.title).foregroundStyle(.white.opacity(0.85)) }
+                }
             }
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
     }
 }
 

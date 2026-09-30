@@ -88,3 +88,12 @@ extension View {
         modifier(LGlass(shape: shape, interactive: interactive))
     }
 }
+
+extension Color {
+    /// Caps brightness so white controls stay readable on bright artwork.
+    var capped: Color {
+        var h: CGFloat = 0, sat: CGFloat = 0, br: CGFloat = 0, a: CGFloat = 0
+        UIColor(self).getHue(&h, saturation: &sat, brightness: &br, alpha: &a)
+        return Color(hue: Double(h), saturation: Double(min(1, sat * 1.1)), brightness: Double(min(br, 0.45)))
+    }
+}

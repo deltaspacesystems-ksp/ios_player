@@ -25,7 +25,7 @@ struct Backdrop: View {
         case .blur:
             ZStack {
                 Color.black
-                if let art { Image(uiImage: art).resizable().scaledToFill().blur(radius: 60).opacity(0.8) }
+                if let art { Image(uiImage: art).resizable().scaledToFill().blur(radius: 60).opacity(0.8).overlay(Color.black.opacity(0.45)) }
                 else { tint.opacity(0.6) }
             }
             .ignoresSafeArea()
@@ -59,7 +59,7 @@ struct NowPlayingView: View {
 
     var body: some View {
         ZStack {
-            Backdrop(tint: p.current?.tint ?? .indigo, bass: clock.bass, style: p.cfg.backdrop, art: p.artwork)
+            Backdrop(tint: (p.current?.tint ?? .indigo).capped, bass: clock.bass, style: p.cfg.backdrop, art: p.artwork)
             VStack(spacing: 20) {
                 Capsule().fill(.white.opacity(0.4)).frame(width: 40, height: 5).padding(.top, 8)
                 Spacer(minLength: 0)
