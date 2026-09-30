@@ -74,21 +74,13 @@ final class Player: ObservableObject {
     // Live levels (for UI)
     @Published var level: Float = 0
     @Published var bass: Float = 0
-    // Settings
-    @Published var crossfade: Double = UserDefaults.standard.object(forKey: "xfade") as? Double ?? 6 {
-        didSet { UserDefaults.standard.set(crossfade, forKey: "xfade") }
-    }
-    @Published var hapticsOn: Bool = UserDefaults.standard.object(forKey: "haptics") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(hapticsOn, forKey: "haptics"); analyzer.enabled = hapticsOn; if !hapticsOn { haptics.stop() } }
-    }
-    @Published var hapticStrength: Double = UserDefaults.standard.object(forKey: "hstrength") as? Double ?? 1 {
-        didSet { UserDefaults.standard.set(hapticStrength, forKey: "hstrength"); analyzer.strength = Float(hapticStrength) }
-    }
-    @Published var preset: EQPreset = EQPreset(rawValue: UserDefaults.standard.string(forKey: "eq") ?? "") ?? .flat {
-        didSet { UserDefaults.standard.set(preset.rawValue, forKey: "eq"); applyEQ() }
-    }
-    @Published var speed: Float = 1 {
-        didSet { timePitch.rate = speed; updateNowPlaying() }
+    // Settings (everything user-customizable lives in Settings.swift)
+    @Published var cfg: Settings = Settings.load() {
+        didSet {
+            cfg.save()
+            applyCfg()
+            if oldValue.speed != cfg.speed { updateNowPlaying() }
+        }
     }
 
     var current: Track? { queue.indices.contains(index) ? queue[index] : nil }
@@ -110,8 +102,6 @@ final class Player: ObservableObject {
 
     init() {
         analyzer = Analyzer(haptics: haptics)
-        analyzer.enabled = hapticsOn
-        analyzer.strength = Float(hapticStrength)
         analyzer.publish = { [weak self] l, b in
             Task { @MainActor in self?.level = l; self?.bass = b }
         }
@@ -121,7 +111,7 @@ final class Player: ObservableObject {
         engine.connect(timePitch, to: eq, format: nil)
         engine.connect(eq, to: engine.outputNode, format: nil)
         installTap(on: engine.mainMixerNode, analyzer: analyzer)
-        applyEQ()
+        applyCfg()
         engine.prepare()
         haptics.prepare()
         setupRemote()
@@ -235,11 +225,20 @@ final class Player: ObservableObject {
 
     func next() {
         guard !queue.isEmpty else { return }
-        play(index + 1 < queue.count ? index + 1 : 0)
+        skip(to: index + 1 < queue.count ? index + 1 : 0)
     }
 
     func previous() {
-        if position > 3 { seek(0) } else { play(max(0, index - 1)) }
+        if position > 3 { seek(0) } else { skip(to: max(0, index - 1)) }
+    }
+
+    private func skip(to i: Int) {
+        if cfg.fadeOnSkip, isPlaying, outgoing == nil, queue.indices.contains(i),
+           let _ = try? AVAudioFile(forReading: queue[i].url) {
+            startFade(to: i, len: max(0.3, cfg.skipFade))
+        } else {
+            play(i)
+        }
     }
 
     func seek(_ t: Double) {
@@ -280,12 +279,13 @@ final class Player: ObservableObject {
         position = a.position
         if let out = outgoing {
             let p = fadeLen > 0 ? min(1, a.position / fadeLen) : 1
-            out.node.volume = Float(cos(p * .pi / 2))   // equal-power crossfade
-            a.node.volume = Float(sin(p * .pi / 2))
+            let g = fadeGains(p)
+            out.node.volume = g.out
+            a.node.volume = g.inn
             if p >= 1 { endFade() }
         } else if duration > 0, let n = autoNext() {
             let remaining = duration - position
-            let len = max(0.05, min(crossfade, duration * 0.4))
+            let len = max(0.05, min(cfg.crossfade, duration * 0.4))
             if remaining <= len && position > 1 { startFade(to: n, len: max(0.05, remaining)) }
         }
     }
@@ -328,9 +328,35 @@ final class Player: ObservableObject {
         try? s.setActive(true)
     }
 
+    private func applyCfg() {
+        analyzer.enabled = cfg.hapticsOn
+        analyzer.strength = Float(cfg.hapticStrength)
+        analyzer.cutoff = Float(cfg.hapticCutoff)
+        analyzer.threshold = Float(cfg.hapticThreshold)
+        analyzer.rumble = cfg.hapticRumble
+        analyzer.beats = cfg.hapticBeats
+        if !cfg.hapticsOn { haptics.stop() }
+        timePitch.rate = cfg.speed
+        timePitch.pitch = cfg.pitchCents
+        applyEQ()
+    }
+
+    func applyPreset(_ p: EQPreset) { cfg.eqGains = p.gains }
+
+    private func fadeGains(_ p: Double) -> (out: Float, inn: Float) {
+        switch cfg.fadeCurve {
+        case .equalPower: return (Float(cos(p * .pi / 2)), Float(sin(p * .pi / 2)))
+        case .linear: return (Float(1 - p), Float(p))
+        case .sCurve:
+            let s = p * p * (3 - 2 * p)
+            return (Float(1 - s), Float(s))
+        }
+    }
+
     private func applyEQ() {
         let freqs: [Float] = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
-        let g = preset.gains
+        let g = cfg.eqGains
+        eq.globalGain = cfg.preamp
         for (i, b) in eq.bands.enumerated() {
             b.filterType = .parametric
             b.frequency = freqs[i]
@@ -391,7 +417,7 @@ final class Player: ObservableObject {
             MPMediaItemPropertyAlbumTitle: t.album,
             MPMediaItemPropertyPlaybackDuration: duration,
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(speed) : 0.0,
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(cfg.speed) : 0.0,
         ]
         if let img = t.artwork { info[MPMediaItemPropertyArtwork] = makeArtwork(img) }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info

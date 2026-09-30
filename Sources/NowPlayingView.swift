@@ -14,7 +14,25 @@ struct RoutePicker: UIViewRepresentable {
 struct Backdrop: View {
     var tint: Color
     var bass: Float
+    var style: BackdropStyle
+    var art: UIImage?
     var body: some View {
+        switch style {
+        case .mesh: mesh
+        case .gradient:
+            LinearGradient(colors: [tint, tint.mix(with: .black, by: 0.6), .black], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+        case .blur:
+            ZStack {
+                Color.black
+                if let art { Image(uiImage: art).resizable().scaledToFill().blur(radius: 60).opacity(0.8) }
+                else { tint.opacity(0.6) }
+            }
+            .ignoresSafeArea()
+        case .black: Color.black.ignoresSafeArea()
+        }
+    }
+
+    private var mesh: some View {
         TimelineView(.animation) { tl in
             let t = Float(tl.date.timeIntervalSinceReferenceDate)
             let w = Float(0.06) + bass * 0.05
@@ -39,14 +57,14 @@ struct NowPlayingView: View {
 
     var body: some View {
         ZStack {
-            Backdrop(tint: p.current?.tint ?? .indigo, bass: p.bass)
+            Backdrop(tint: p.current?.tint ?? .indigo, bass: p.bass, style: p.cfg.backdrop, art: p.current?.artwork)
             VStack(spacing: 20) {
                 Capsule().fill(.white.opacity(0.4)).frame(width: 40, height: 5).padding(.top, 8)
                 Spacer(minLength: 0)
 
-                ArtworkView(image: p.current?.artwork, radius: 26)
+                ArtworkView(image: p.current?.artwork, radius: p.cfg.artworkRadius)
                     .shadow(color: (p.current?.tint ?? .pink).opacity(0.6), radius: 30 + CGFloat(p.bass) * 30, y: 16)
-                    .scaleEffect(p.isPlaying ? 1 + CGFloat(p.bass) * 0.035 : 0.84)
+                    .scaleEffect(p.isPlaying ? 1 + (p.cfg.pulseArtwork ? CGFloat(p.bass) * 0.035 * p.cfg.pulseAmount : 0) : 0.84)
                     .animation(.linear(duration: 0.06), value: p.bass)
                     .animation(.spring(response: 0.5, dampingFraction: 0.7), value: p.isPlaying)
                     .padding(.horizontal, 28)
@@ -65,7 +83,7 @@ struct NowPlayingView: View {
                     HStack {
                         Text(formatTime(p.position))
                         Spacer()
-                        Text("-" + formatTime(max(0, p.duration - p.position)))
+                        Text(p.cfg.showRemaining ? "-" + formatTime(max(0, p.duration - p.position)) : formatTime(p.duration))
                     }
                     .font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.7))
                 }
@@ -90,10 +108,10 @@ struct NowPlayingView: View {
                     HStack(spacing: 14) {
                         toggle("shuffle", on: p.shuffle) { p.toggleShuffle() }
                         toggle(p.repeatMode == .one ? "repeat.1" : "repeat", on: p.repeatMode != .off) { p.cycleRepeat() }
-                        toggle("waveform.path", on: p.hapticsOn) { p.hapticsOn.toggle() }
-                        RoutePicker().frame(width: 44, height: 44).glassEffect(.regular.interactive(), in: .circle)
+                        toggle("waveform.path", on: p.cfg.hapticsOn) { p.cfg.hapticsOn.toggle() }
+                        RoutePicker().frame(width: 44, height: 44).lGlass(Circle(), interactive: true)
                         Button { showQueue = true } label: { Image(systemName: "list.bullet").frame(width: 44, height: 44) }
-                            .buttonStyle(.plain).glassEffect(.regular.interactive(), in: .circle)
+                            .buttonStyle(.plain).lGlass(Circle(), interactive: true)
                     }
                     .font(.body.weight(.semibold))
                 }
@@ -111,7 +129,7 @@ struct NowPlayingView: View {
                 .foregroundStyle(on ? Color.pink : .white)
         }
         .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .circle)
+        .lGlass(Circle(), interactive: true)
     }
 }
 

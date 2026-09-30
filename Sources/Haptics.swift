@@ -75,6 +75,10 @@ final class HapticsEngine {
 final class Analyzer {
     var enabled = true
     var strength: Float = 1
+    var cutoff: Float = 140
+    var threshold: Float = 1.45
+    var rumble = true
+    var beats = true
     var publish: (@Sendable (Float, Float) -> Void)?
     private let haptics: HapticsEngine
     private var lp: Float = 0, peak: Float = 0.05, avg: Float = 0
@@ -86,7 +90,7 @@ final class Analyzer {
         guard let ch = buf.floatChannelData, buf.frameLength > 0 else { return }
         let n = Int(buf.frameLength)
         let sr = Float(buf.format.sampleRate)
-        let a = 1 - exp(-2 * Float.pi * 140 / sr)
+        let a = 1 - exp(-2 * Float.pi * cutoff / sr)
         let x0 = ch[0]
         var full: Float = 0, low: Float = 0
         for i in 0..<n {
@@ -101,8 +105,8 @@ final class Analyzer {
         let norm = min(1, low / peak)
         let now = CACurrentMediaTime()
         if enabled {
-            haptics.update(intensity: powf(norm, 1.6) * 0.55 * strength)
-            if low > avg * 1.45 && norm > 0.4 && now - lastOnset > 0.12 {
+            haptics.update(intensity: rumble ? powf(norm, 1.6) * 0.55 * strength : 0)
+            if beats && low > avg * threshold && norm > 0.4 && now - lastOnset > 0.12 {
                 lastOnset = now
                 haptics.pulse(min(1, (0.5 + norm * 0.5) * strength))
             }

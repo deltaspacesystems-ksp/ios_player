@@ -84,8 +84,8 @@ struct VideoScreen: View {
             PlayerLayerView(player: vm.player, fill: fill).ignoresSafeArea()
 
             HStack(spacing: 0) {
-                Color.clear.contentShape(Rectangle()).onTapGesture(count: 2) { vm.skip(-10) }
-                Color.clear.contentShape(Rectangle()).onTapGesture(count: 2) { vm.skip(10) }
+                Color.clear.contentShape(Rectangle()).onTapGesture(count: 2) { vm.skip(-Double(music.cfg.skipSeconds)) }
+                Color.clear.contentShape(Rectangle()).onTapGesture(count: 2) { vm.skip(Double(music.cfg.skipSeconds)) }
             }
 
             if controls { overlay.transition(.opacity) }
@@ -94,7 +94,7 @@ struct VideoScreen: View {
         .onTapGesture { withAnimation(.easeInOut(duration: 0.25)) { controls.toggle() }; scheduleHide() }
         .statusBarHidden(!controls)
         .preferredColorScheme(.dark)
-        .onAppear { music.pause(); vm.toggle(); scheduleHide() }
+        .onAppear { fill = music.cfg.videoFill; vm.rate = music.cfg.videoSpeed; music.pause(); vm.toggle(); scheduleHide() }
         .onDisappear { vm.player.pause() }
     }
 
@@ -123,14 +123,14 @@ struct VideoScreen: View {
 
             GlassEffectContainer(spacing: 30) {
                 HStack(spacing: 28) {
-                    Button { vm.skip(-10); scheduleHide() } label: { Image(systemName: "gobackward.10").font(.title).frame(width: 52, height: 52) }
+                    Button { vm.skip(-Double(music.cfg.skipSeconds)); scheduleHide() } label: { Image(systemName: "gobackward.\(music.cfg.skipSeconds)").font(.title).frame(width: 52, height: 52) }
                         .buttonStyle(.glass).buttonBorderShape(.circle)
                     Button { vm.toggle(); scheduleHide() } label: {
                         Image(systemName: vm.isPlaying ? "pause.fill" : "play.fill").font(.system(size: 36)).frame(width: 70, height: 70)
                             .contentTransition(.symbolEffect(.replace))
                     }
                     .buttonStyle(.glassProminent).buttonBorderShape(.circle)
-                    Button { vm.skip(10); scheduleHide() } label: { Image(systemName: "goforward.10").font(.title).frame(width: 52, height: 52) }
+                    Button { vm.skip(Double(music.cfg.skipSeconds)); scheduleHide() } label: { Image(systemName: "goforward.\(music.cfg.skipSeconds)").font(.title).frame(width: 52, height: 52) }
                         .buttonStyle(.glass).buttonBorderShape(.circle)
                 }
             }
@@ -147,7 +147,7 @@ struct VideoScreen: View {
                 .font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.8))
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
-            .glassEffect(.regular, in: .rect(cornerRadius: 28))
+            .lGlass(RoundedRectangle(cornerRadius: 28, style: .continuous))
             .padding(.horizontal)
         }
         .foregroundStyle(.white)
@@ -156,7 +156,7 @@ struct VideoScreen: View {
     private func scheduleHide() {
         hideTask?.cancel()
         hideTask = Task {
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: .seconds(music.cfg.controlsHide))
             if !Task.isCancelled, vm.isPlaying { withAnimation(.easeInOut(duration: 0.3)) { controls = false } }
         }
     }
