@@ -134,16 +134,19 @@ struct SongsView: View {
                         Section {
                             HStack(spacing: 12) {
                                 Button { player.setQueue(items, start: 0, shuffled: false) } label: {
-                                    Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity)
+                                    Label("Play", systemImage: "play.fill")
+                                        .frame(maxWidth: .infinity, minHeight: 50)
+                                        .foregroundStyle(.white)
+                                        .background(player.cfg.accent, in: Capsule())
                                 }
-                                .buttonStyle(.borderedProminent)
                                 Button { player.setQueue(items, start: Int.random(in: 0..<items.count), shuffled: true) } label: {
-                                    Label("Shuffle", systemImage: "shuffle").frame(maxWidth: .infinity)
+                                    Label("Shuffle", systemImage: "shuffle")
+                                        .frame(maxWidth: .infinity, minHeight: 50)
+                                        .foregroundStyle(player.cfg.accent)
+                                        .background(player.cfg.accent.opacity(0.18), in: Capsule())
                                 }
-                                .buttonStyle(.bordered)
                             }
-                            .buttonBorderShape(.capsule)
-                            .controlSize(.large)
+                            .buttonStyle(.plain)
                             .font(.body.weight(.semibold))
                             .disabled(items.isEmpty)
                             .listRowBackground(Color.clear)
@@ -156,6 +159,7 @@ struct SongsView: View {
                                     if let i = items.firstIndex(of: t) { player.setQueue(items, start: i) }
                                 } label: { TrackRow(track: t, playing: player.current == t) }
                                 .buttonStyle(.plain)
+                                .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
                                 .contextMenu {
                                     Button("Play Next", systemImage: "text.insert") { player.playNext(t) }
                                     Button("Add to Queue", systemImage: "text.append") { player.enqueue(t) }
