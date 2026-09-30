@@ -237,6 +237,7 @@ struct MiniPlayer: View {
                 if let a = player.current?.artist, !a.isEmpty { Text(a).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
             }
             Spacer()
+            Button { player.previous() } label: { Image(systemName: "backward.fill").font(.title3) }
             Button { player.togglePlay() } label: {
                 Image(systemName: player.isPlaying ? "pause.fill" : "play.fill").font(.title3).frame(width: 36)
             }
