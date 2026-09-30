@@ -1,7 +1,10 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var player: Player
+    @EnvironmentObject var library: Library
+    @State private var addFolder = false
     @State private var confirmReset = false
 
     private var accentBinding: Binding<Color> {
@@ -18,6 +21,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                folders
                 appearance
                 crossfade
                 haptics
@@ -32,6 +36,27 @@ struct SettingsView: View {
             .confirmationDialog("Reset everything to defaults?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Reset", role: .destructive) { player.cfg = Settings() }
             }
+        }
+    }
+
+    private var folders: some View {
+        Section {
+            ForEach(library.folders) { f in
+                HStack {
+                    Label(f.name, systemImage: f.available ? "folder.fill" : "exclamationmark.triangle.fill")
+                        .foregroundStyle(f.available ? Color.primary : Color.orange)
+                    if !f.available { Spacer(); Text("Tap Add to re-grant").font(.caption).foregroundStyle(.secondary) }
+                }
+                .swipeActions { Button("Remove", role: .destructive) { Task { await library.removeFolder(f) } } }
+            }
+            Button("Add folder…", systemImage: "folder.badge.plus") { addFolder = true }
+            Button("Rescan library", systemImage: "arrow.clockwise") { Task { await library.reload() } }
+            if library.scanning { HStack { ProgressView(); Text("Scanning…").foregroundStyle(.secondary) } }
+        } header: { Text("Library folders") } footer: {
+            Text("Folders are remembered and scanned recursively on every launch; files are read in place. If a folder shows a warning (can happen inside LiveContainer), pick it again with Add folder. Swipe to remove.")
+        }
+        .fileImporter(isPresented: $addFolder, allowedContentTypes: [.folder]) { r in
+            if case .success(let u) = r { Task { await library.addFolder(u) } }
         }
     }
 

@@ -30,11 +30,19 @@ struct ContentView: View {
 struct ImportButton: View {
     @EnvironmentObject var library: Library
     @State private var show = false
+    @State private var pickFolder = false
+
     var body: some View {
-        Button { show = true } label: { Image(systemName: "plus") }
-            .fileImporter(isPresented: $show, allowedContentTypes: [.audio, .movie], allowsMultipleSelection: true) { r in
-                if case .success(let urls) = r { Task { await library.importFiles(urls) } }
-            }
+        Menu {
+            Button("Import Files…", systemImage: "doc.badge.plus") { pickFolder = false; show = true }
+            Button("Add Folder…", systemImage: "folder.badge.plus") { pickFolder = true; show = true }
+        } label: { Image(systemName: "plus") }
+        .fileImporter(isPresented: $show, allowedContentTypes: pickFolder ? [.folder] : [.audio, .movie],
+                      allowsMultipleSelection: !pickFolder) { r in
+            guard case .success(let urls) = r else { return }
+            if pickFolder { if let f = urls.first { Task { await library.addFolder(f) } } }
+            else { Task { await library.importFiles(urls) } }
+        }
     }
 }
 
@@ -108,7 +116,7 @@ struct SongsView: View {
             Group {
                 if library.audio.isEmpty {
                     ContentUnavailableView("No music yet", systemImage: "music.note.list",
-                        description: Text("Tap + to import files, or drop them into Lumen via the Files app / Finder."))
+                        description: Text("Tap + to import files or add a folder (iCloud Drive / On My iPhone) that Lumen keeps scanning."))
                 } else {
                     List {
                         Section {
@@ -135,7 +143,7 @@ struct SongsView: View {
                                 .contextMenu {
                                     Button("Play Next", systemImage: "text.insert") { player.playNext(t) }
                                     Button("Add to Queue", systemImage: "text.append") { player.enqueue(t) }
-                                    Button("Delete", systemImage: "trash", role: .destructive) { library.delete(t) }
+                                    if library.canDelete(t) { Button("Delete", systemImage: "trash", role: .destructive) { library.delete(t) } }
                                 }
                             }
                         }
@@ -196,7 +204,7 @@ struct VideosView: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        .swipeActions { Button("Delete", role: .destructive) { library.delete(v) } }
+                        .swipeActions { if library.canDelete(v) { Button("Delete", role: .destructive) { library.delete(v) } } }
                     }
                     .listStyle(.plain)
                 }

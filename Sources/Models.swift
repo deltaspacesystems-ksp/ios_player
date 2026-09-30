@@ -42,7 +42,7 @@ struct Track: Identifiable, Equatable {
         }
         let vt = (try? await asset.loadTracks(withMediaType: .video)) ?? []
         let tint = art?.averageColor.map { Color(uiColor: $0) } ?? Color(hue: Double(abs(title.hashValue) % 360) / 360, saturation: 0.6, brightness: 0.7)
-        return Track(id: url.lastPathComponent, url: url, title: title, artist: artist, album: album,
+        return Track(id: url.path, url: url, title: title, artist: artist, album: album,
                      duration: dur, artwork: art, tint: tint, isVideo: !vt.isEmpty)
     }
 }
@@ -60,25 +60,109 @@ extension UIImage {
     }
 }
 
+struct LibraryFolder: Identifiable {
+    let id = UUID()
+    var name: String
+    var url: URL?          // nil = bookmark could not be resolved (e.g. LiveContainer / moved folder)
+    var bookmark: Data
+    var available: Bool { url != nil }
+}
+
 @MainActor
 final class Library: ObservableObject {
     @Published var tracks: [Track] = []
+    @Published var folders: [LibraryFolder] = []
+    @Published var scanning = false
 
     static let audioExt: Set<String> = ["mp3", "m4a", "aac", "wav", "aiff", "aif", "caf", "flac", "alac"]
     static let videoExt: Set<String> = ["mp4", "m4v", "mov"]
+    private static let foldersKey = "lumen.folders.v2"
 
     var audio: [Track] { tracks.filter { !$0.isVideo } }
     var videos: [Track] { tracks.filter { $0.isVideo } }
 
     private var docs: URL { FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0] }
 
-    func reload() async {
-        let files = (try? FileManager.default.contentsOfDirectory(at: docs, includingPropertiesForKeys: nil)) ?? []
-        var out: [Track] = []
-        for u in files.sorted(by: { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }) {
+    init() { resolveFolders() }
+
+    // MARK: Folders outside Lumen's sandbox (persisted as security-scoped bookmarks)
+
+    private func resolveFolders() {
+        let saved = UserDefaults.standard.array(forKey: Self.foldersKey) as? [[String: Data]] ?? []
+        var out: [LibraryFolder] = []
+        for entry in saved {
+            guard let b = entry["b"] else { continue }
+            let name = entry["n"].flatMap { String(data: $0, encoding: .utf8) } ?? "Folder"
+            var stale = false
+            if let u = try? URL(resolvingBookmarkData: b, options: [], relativeTo: nil, bookmarkDataIsStale: &stale),
+               u.startAccessingSecurityScopedResource() {
+                out.append(LibraryFolder(name: u.lastPathComponent, url: u, bookmark: stale ? ((try? u.bookmarkData()) ?? b) : b))
+            } else {
+                // Keep it: never silently forget a folder the user added.
+                out.append(LibraryFolder(name: name, url: nil, bookmark: b))
+            }
+        }
+        folders = out
+        saveFolders()
+    }
+
+    private func saveFolders() {
+        let arr: [[String: Data]] = folders.map { ["b": $0.bookmark, "n": Data($0.name.utf8)] }
+        UserDefaults.standard.set(arr, forKey: Self.foldersKey)
+    }
+
+    func addFolder(_ url: URL) async {
+        guard url.startAccessingSecurityScopedResource(),
+              let data = try? url.bookmarkData() else { return }
+        if folders.contains(where: { $0.url?.path == url.path }) { url.stopAccessingSecurityScopedResource(); return }
+        let f = LibraryFolder(name: url.lastPathComponent, url: url, bookmark: data)
+        if let i = folders.firstIndex(where: { !$0.available && $0.name == f.name }) { folders[i] = f } else { folders.append(f) }
+        saveFolders()
+        await reload()
+    }
+
+    func removeFolder(_ f: LibraryFolder) async {
+        f.url?.stopAccessingSecurityScopedResource()
+        folders.removeAll { $0.id == f.id }
+        saveFolders()
+        await reload()
+    }
+
+    // MARK: Scanning
+
+    nonisolated private static func scan(_ root: URL) -> [URL] {
+        var out: [URL] = []
+        guard let en = FileManager.default.enumerator(at: root, includingPropertiesForKeys: [.isRegularFileKey],
+                                                      options: [.skipsHiddenFiles, .skipsPackageDescendants]) else { return out }
+        while let u = en.nextObject() as? URL {
             let ext = u.pathExtension.lowercased()
-            guard Self.audioExt.contains(ext) || Self.videoExt.contains(ext) else { continue }
-            out.append(await Track.load(u))
+            if audioExt.contains(ext) || videoExt.contains(ext) { out.append(u) }
+        }
+        return out
+    }
+
+    func reload() async {
+        scanning = true
+        defer { scanning = false }
+        let roots = [docs] + folders.compactMap(\.url)
+        var urls: [URL] = []
+        var seen = Set<String>()
+        for r in roots {
+            let found = await Task.detached { Self.scan(r) }.value
+            for u in found where seen.insert(u.path).inserted { urls.append(u) }
+        }
+        var out: [Track] = []
+        var i = 0
+        while i < urls.count {
+            let chunk = Array(urls[i..<min(i + 16, urls.count)])
+            i += 16
+            let loaded = await withTaskGroup(of: Track.self) { g in
+                for u in chunk { g.addTask { await Track.load(u) } }
+                var r: [Track] = []
+                for await t in g { r.append(t) }
+                return r
+            }
+            out += loaded
         }
         tracks = out.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
@@ -95,7 +179,11 @@ final class Library: ObservableObject {
         await reload()
     }
 
+    /// Only files inside Lumen's own folder can be deleted; external folders are read-only here.
+    func canDelete(_ t: Track) -> Bool { t.url.path.hasPrefix(docs.path) }
+
     func delete(_ t: Track) {
+        guard canDelete(t) else { return }
         try? FileManager.default.removeItem(at: t.url)
         tracks.removeAll { $0 == t }
     }

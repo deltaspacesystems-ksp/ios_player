@@ -19,3 +19,9 @@ Native SwiftUI (iOS 26, Liquid Glass) audio + video player.
 Add music/videos via the + button, the Files app ("Lumen" folder) or iTunes/Finder file sharing.
 
 If `macos-26` is not available for your account, change `runs-on` in `.github/workflows/build.yml` to `macos-latest` and make sure it has Xcode 26.
+
+## SideStore / LiveContainer
+
+- SideStore source: `https://github.com/deltaspacesystems-ksp/ios_player/releases/download/latest/source.json`
+- LiveContainer: install `Lumen.ipa` from the latest release (unsigned IPA, arm64). Files added in-app go to the guest's Documents folder.
+  Folder bookmarks may not survive inside LiveContainer; Lumen keeps such folders listed (with a warning) so you can re-grant access in Settings.
