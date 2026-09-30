@@ -28,10 +28,28 @@ jobs:
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/Lumen.app Payload/
           zip -qr Lumen.ipa Payload
+      - name: Generate SideStore source
+        run: |
+          REPO="${{ github.repository }}"
+          BASE="https://github.com/${REPO}/releases/download/latest"
+          SIZE=$(stat -f%z Lumen.ipa)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          VER="1.0.${{ github.run_number }}"
+          jq -n --arg base "$BASE" --arg icon "https://raw.githubusercontent.com/${REPO}/main/icon.png"             --argjson size "$SIZE" --arg date "$DATE" --arg ver "$VER" '{
+            name: "Lumen Source", identifier: "dev.lumen.source",
+            sourceURL: ($base + "/source.json"),
+            apps: [{
+              name: "Lumen", bundleIdentifier: "dev.lumen.player", developerName: "Lumen",
+              subtitle: "Audio & video player", localizedDescription: "Liquid Glass player with crossfade and music haptics.",
+              iconURL: $icon, tintColor: "FF2D78",
+              downloadURL: ($base + "/Lumen.ipa"), size: $size, version: $ver, versionDate: $date,
+              versionDescription: "Automatic build",
+              versions: [{version: $ver, date: $date, size: $size, downloadURL: ($base + "/Lumen.ipa"), localizedDescription: "Automatic build", minOSVersion: "26.0"}]
+            }], news: []}' > source.json
       - name: Publish IPA release
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest Lumen.ipa --title "Lumen (latest build)" --notes "Commit ${GITHUB_SHA}"
+          gh release create latest Lumen.ipa source.json --title "Lumen (latest build)" --notes "Commit ${GITHUB_SHA}"
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Publish build report
