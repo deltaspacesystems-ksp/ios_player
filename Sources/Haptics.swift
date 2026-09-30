@@ -1,3 +1,4 @@
+import AudioToolbox
 import AVFoundation
 import CoreHaptics
 import QuartzCore
@@ -8,6 +9,7 @@ final class HapticsEngine {
     private var cont: CHHapticPatternPlayer?
     private var contStart = Date.distantPast
     private let q = DispatchQueue(label: "lumen.haptics")
+    private var background = false
     let supported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
 
     func prepare() {
@@ -24,14 +26,26 @@ final class HapticsEngine {
         }
     }
 
+    /// Core Haptics is suspended by iOS in the background; on return we must restart the engine.
+    func setBackground(_ b: Bool) {
+        q.async {
+            self.background = b
+            if !b {
+                self.cont = nil
+                try? self.engine?.start()
+            }
+        }
+    }
+
     func update(intensity: Float) {
         q.async {
-            guard let e = self.engine else { return }
+            guard let e = self.engine, !self.background else { return }
             if intensity < 0.02 {
                 if let c = self.cont { try? c.sendParameters([self.param(0)], atTime: CHHapticTimeImmediate) }
                 return
             }
             if self.cont == nil || Date().timeIntervalSince(self.contStart) > 25 {
+                try? e.start()
                 try? self.cont?.stop(atTime: CHHapticTimeImmediate)
                 let ev = CHHapticEvent(eventType: .hapticContinuous,
                                        parameters: [CHHapticEventParameter(parameterID: .hapticIntensity, value: 1),
@@ -53,7 +67,13 @@ final class HapticsEngine {
 
     func pulse(_ intensity: Float) {
         q.async {
+            if self.background {
+                // Best effort while backgrounded: system "peek" haptic (fixed strength).
+                AudioServicesPlaySystemSound(1519)
+                return
+            }
             guard let e = self.engine else { return }
+            try? e.start()
             let ev = CHHapticEvent(eventType: .hapticTransient,
                                    parameters: [CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
                                                 CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.7)],
