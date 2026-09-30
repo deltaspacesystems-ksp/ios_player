@@ -10,6 +10,7 @@ struct ContentView: View {
     var body: some View {
         TabView {
             Tab("Songs", systemImage: "music.note") { SongsView() }
+            Tab("Mixes", systemImage: "rectangle.3.group") { MixesView() }
             Tab("Videos", systemImage: "play.rectangle.fill") { VideosView(videoTrack: $videoTrack) }
             Tab("Settings", systemImage: "slider.horizontal.3") { SettingsView() }
         }

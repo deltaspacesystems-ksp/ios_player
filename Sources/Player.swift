@@ -33,6 +33,7 @@ final class Deck {
     var gen = 0
     var startFrame: AVAudioFramePosition = 0
     var lastPos: Double = 0
+    var gain: Float = 1
 
     var duration: Double {
         guard let f = file else { return 0 }
@@ -118,6 +119,12 @@ final class Player: ObservableObject {
     private var tempoRatio: Double = 1
     private var rampTask: Task<Void, Never>?
 
+    // Mix editor playback
+    @Published var mixActive = false
+    private var mixItems: [MixItem] = []
+    private var fadeFrom = 0.0
+    private var curveOverride: FadeCurve?
+
     private let haptics = HapticsEngine()
     private let analyzer: Analyzer
 
@@ -152,6 +159,7 @@ final class Player: ObservableObject {
     func setQueue(_ tracks: [Track], start: Int, shuffled: Bool? = nil) {
         guard tracks.indices.contains(start) else { return }
         stopDJ()
+        stopMix()
         if let s = shuffled { shuffle = s }
         originalQueue = tracks
         if shuffle {
@@ -167,6 +175,7 @@ final class Player: ObservableObject {
     }
 
     func toggleShuffle() {
+        stopMix()
         shuffle.toggle()
         guard let cur = current else { return }
         if shuffle {
@@ -186,18 +195,21 @@ final class Player: ObservableObject {
     }
 
     func playNext(_ t: Track) {
+        stopMix()
         if queue.isEmpty { setQueue([t], start: 0); return }
         queue.insert(t, at: index + 1)
         originalQueue.append(t)
     }
 
     func enqueue(_ t: Track) {
+        stopMix()
         if queue.isEmpty { setQueue([t], start: 0); return }
         queue.append(t)
         originalQueue.append(t)
     }
 
     func removeFromQueue(at offsets: IndexSet) {
+        stopMix()
         let cur = current
         queue.remove(atOffsets: offsets)
         if let cur, let i = queue.firstIndex(of: cur) { index = i }
@@ -216,14 +228,17 @@ final class Player: ObservableObject {
         refreshArtwork()
         other.node.stop()
         let d = active
-        d.node.volume = 1
-        load(d, file, from: t)
+        let hasItem = mixActive && mixItems.indices.contains(i)
+        d.gain = hasItem ? Float(pow(10, mixItems[i].gainDB / 20)) : 1
+        d.node.volume = d.gain
+        let start = (hasItem && t == 0) ? mixItems[i].inPoint : t
+        load(d, file, from: start)
         activateSession()
         ensureEngine()
         if autoplay { d.node.play() }
         isPlaying = autoplay
         duration = d.duration
-        position = t
+        position = start
         if !autoplay { haptics.stop() }
         updateNowPlaying()
     }
@@ -271,7 +286,7 @@ final class Player: ObservableObject {
         guard let file = active.file else { return }
         cancelFade()
         let was = isPlaying
-        active.node.volume = 1
+        active.node.volume = active.gain
         load(active, file, from: t)
         if was { active.node.play() }
         position = min(max(0, t), duration)
@@ -306,30 +321,49 @@ final class Player: ObservableObject {
         let a = active
         position = a.position
         if let out = outgoing {
-            let p = fadeLen > 0 ? min(1, a.position / fadeLen) : 1
+            let p = fadeLen > 0 ? min(1, max(0, (a.position - fadeFrom) / fadeLen)) : 1
             let g = fadeGains(p)
-            out.node.volume = g.out
-            a.node.volume = g.inn
+            out.node.volume = g.out * out.gain
+            a.node.volume = g.inn * a.gain
             if tempoRatio != 1 { a.tp.rate = Float(tempoRatio + (1 - tempoRatio) * p) }
             if p >= 1 { endFade() }
-        } else if duration > 0, let n = autoNext() {
-            let remaining = duration - position
-            let base = djActive ? cfg.djFade : cfg.crossfade
-            let len = max(0.05, min(base, duration * 0.4))
-            announceIfNeeded(n, remaining: remaining, len: len)
-            if remaining <= len && position > 1 { startFade(to: n, len: max(0.05, remaining)) }
+        } else if duration > 0 {
+            let cur = mixActive && mixItems.indices.contains(index) ? mixItems[index] : nil
+            let end = min(duration, cur?.outPoint ?? duration)
+            let remaining = end - position
+            if let n = autoNext() {
+                var len: Double
+                var from = 0.0
+                var minPos = 1.0
+                if mixActive, mixItems.indices.contains(n) {
+                    len = max(0.05, min(mixItems[n].overlap, (end - (cur?.inPoint ?? 0)) * 0.9))
+                    from = mixItems[n].inPoint
+                    minPos = (cur?.inPoint ?? 0) + 0.3
+                } else {
+                    let base = djActive ? cfg.djFade : cfg.crossfade
+                    len = max(0.05, min(base, duration * 0.4))
+                    announceIfNeeded(n, remaining: remaining, len: len)
+                }
+                if remaining <= len && position > minPos { startFade(to: n, len: max(0.05, remaining), from: from) }
+            } else if mixActive, remaining <= 0.03 {
+                play(0, autoplay: false)
+            }
         }
     }
 
-    private func startFade(to n: Int, len: Double) {
+    private func startFade(to n: Int, len: Double, from start: Double = 0) {
         guard let file = try? AVAudioFile(forReading: queue[n].url) else { return }
         let out = active
         let inc = other
+        let item = mixActive && mixItems.indices.contains(n) ? mixItems[n] : nil
+        inc.gain = item.map { Float(pow(10, $0.gainDB / 20)) } ?? 1
         inc.node.volume = 0
+        curveOverride = item?.curve
         tempoRatio = 1
         inc.tp.rate = 1
         inc.tp.bypass = true
-        if djActive, cfg.djTempoMatch, queue.indices.contains(index),
+        let wantTempo = item?.tempoMatch ?? (djActive && cfg.djTempoMatch)
+        if wantTempo, queue.indices.contains(index),
            let ao = analysis.results[queue[index].id], let ai = analysis.results[queue[n].id], ao.bpm > 0, ai.bpm > 0 {
             var r = ao.bpm / ai.bpm
             for c in [r * 2, r / 2] where abs(c - 1) < abs(r - 1) { r = c }
@@ -339,15 +373,16 @@ final class Player: ObservableObject {
                 inc.tp.rate = Float(r)
             }
         }
-        load(inc, file, from: 0)
+        load(inc, file, from: start)
         inc.node.play()
         outgoing = out
         active = inc
         fadeLen = len
+        fadeFrom = start
         index = n
         refreshArtwork()
         duration = inc.duration
-        position = 0
+        position = start
         updateNowPlaying()
     }
 
@@ -355,7 +390,8 @@ final class Player: ObservableObject {
         outgoing?.node.stop()
         outgoing?.node.volume = 1
         outgoing = nil
-        active.node.volume = 1
+        active.node.volume = active.gain
+        curveOverride = nil
         tempoRatio = 1
         for d in [deckA, deckB] { d.tp.rate = 1; d.tp.bypass = true }
     }
@@ -392,13 +428,7 @@ final class Player: ObservableObject {
     func applyPreset(_ p: EQPreset) { cfg.eqGains = p.gains }
 
     private func fadeGains(_ p: Double) -> (out: Float, inn: Float) {
-        switch cfg.fadeCurve {
-        case .equalPower: return (Float(cos(p * .pi / 2)), Float(sin(p * .pi / 2)))
-        case .linear: return (Float(1 - p), Float(p))
-        case .sCurve:
-            let s = p * p * (3 - 2 * p)
-            return (Float(1 - s), Float(s))
-        }
+        (curveOverride ?? cfg.fadeCurve).gains(p)
     }
 
     private func applyEQ() {
@@ -414,11 +444,36 @@ final class Player: ObservableObject {
         }
     }
 
+    // MARK: Mix playback
+
+    func startMix(_ mix: Mix, tracks: [String: Track], startAt: Int = 0, offset: Double? = nil) {
+        var items: [MixItem] = []
+        var list: [Track] = []
+        for it in mix.items {
+            if let t = tracks[it.trackID] { items.append(it); list.append(t) }
+        }
+        guard !list.isEmpty else { return }
+        stopDJ()
+        shuffle = false
+        mixActive = true
+        mixItems = items
+        originalQueue = list
+        queue = list
+        play(min(max(0, startAt), list.count - 1), from: offset ?? 0)
+    }
+
+    func stopMix() {
+        guard mixActive else { return }
+        mixActive = false
+        mixItems = []
+    }
+
     // MARK: AI DJ (offline)
 
     func startDJ(pool: [Track], from: Track? = nil) {
         let audio = pool.filter { !$0.isVideo }
         guard let start = from ?? current ?? audio.randomElement() else { return }
+        stopMix()
         djPool = audio
         announcedID = nil
         announceCount = 0

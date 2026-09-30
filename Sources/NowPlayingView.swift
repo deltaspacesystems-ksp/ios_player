@@ -78,13 +78,14 @@ struct NowPlayingView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(p.current?.title ?? "Not Playing").font(.title2.bold()).lineLimit(1)
                     Text(p.current?.artist ?? "").font(.title3).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
-                    if p.djActive || (p.current.flatMap { analysis.results[$0.id] } != nil) {
+                    if p.djActive || p.mixActive || (p.current.flatMap { analysis.results[$0.id] } != nil) {
                         HStack(spacing: 8) {
                             if let a = p.current.flatMap({ analysis.results[$0.id] }) {
                                 Text("\(Int(a.bpm.rounded())) BPM")
                                 Text(a.keyName)
                             }
                             if p.djActive { Label("DJ", systemImage: "sparkles") }
+                            if p.mixActive { Label("Mix", systemImage: "rectangle.3.group") }
                         }
                         .font(.caption.bold())
                         .padding(.horizontal, 10).padding(.vertical, 4)
@@ -153,6 +154,8 @@ struct NowPlayingView: View {
 
 struct QueueView: View {
     @EnvironmentObject var p: Player
+    @EnvironmentObject var mixStore: MixStore
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             List {
@@ -165,6 +168,16 @@ struct QueueView: View {
             .tint(p.cfg.accent)
             .navigationTitle("Up Next")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save as Mix", systemImage: "rectangle.3.group") {
+                        _ = mixStore.add(from: p.queue, name: "Queue " + Date.now.formatted(date: .abbreviated, time: .shortened),
+                                         overlap: p.cfg.crossfade)
+                        dismiss()
+                    }
+                    .disabled(p.queue.isEmpty)
+                }
+            }
         }
     }
 }
