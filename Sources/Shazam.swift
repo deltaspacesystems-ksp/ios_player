@@ -120,7 +120,7 @@ final class ShazamService: ObservableObject {
         handle(await SHManagedSession().result())
     }
 
-    private func handle(_ r: SHSessionResult) {
+    private func handle(_ r: SHSession.Result) {
         switch r {
         case .match(let m):
             if let i = m.mediaItems.first {

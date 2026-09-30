@@ -574,7 +574,8 @@ final class Player: ObservableObject {
         artwork = nil
         let url = t.url, id = t.id
         Task {
-            let data = OverrideStore.shared.artData(id) ?? (await MetaReader.read(url, wantArt: true).art)
+            var data = OverrideStore.shared.artData(id)
+            if data == nil { data = await MetaReader.read(url, wantArt: true).art }
             let img = data.flatMap { UIImage(data: $0) }.flatMap { $0.preparingThumbnail(of: CGSize(width: 800, height: 800)) ?? $0 }
             if artID == id { artwork = img; updateNowPlaying() }
         }
