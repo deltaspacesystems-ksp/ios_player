@@ -35,6 +35,7 @@ struct Settings: Codable, Equatable {
     var pulseArtwork = true
     var pulseAmount = 1.0
     var artworkRadius = 26.0
+    var artworkSize = 0.72
     var clearGlass = false
     var showRemaining = true
     // Video
@@ -48,8 +49,13 @@ struct Settings: Codable, Equatable {
     private static let key = "lumen.settings.v1"
 
     static func load() -> Settings {
+        // Merge saved values over defaults so newly added options never reset existing settings.
         guard let d = UserDefaults.standard.data(forKey: key),
-              let s = try? JSONDecoder().decode(Settings.self, from: d) else { return Settings() }
+              let saved = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any],
+              let defData = try? JSONEncoder().encode(Settings()),
+              let base = (try? JSONSerialization.jsonObject(with: defData)) as? [String: Any],
+              let md = try? JSONSerialization.data(withJSONObject: base.merging(saved) { $1 }),
+              let s = try? JSONDecoder().decode(Settings.self, from: md) else { return Settings() }
         return s
     }
 

@@ -72,6 +72,8 @@ struct SettingsView: View {
                 row("Pulse amount", String(format: "%.1f×", player.cfg.pulseAmount),
                     Slider(value: $player.cfg.pulseAmount, in: 0.2...3))
             }
+            row("Artwork size", "\(Int(player.cfg.artworkSize * 100))%",
+                Slider(value: $player.cfg.artworkSize, in: 0.3...1, step: 0.01))
             row("Artwork corner radius", "\(Int(player.cfg.artworkRadius))",
                 Slider(value: $player.cfg.artworkRadius, in: 0...60, step: 1))
             Toggle("Show remaining time", isOn: $player.cfg.showRemaining)

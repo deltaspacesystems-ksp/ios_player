@@ -69,7 +69,7 @@ struct NowPlayingView: View {
                     .scaleEffect(p.isPlaying ? 1 + (p.cfg.pulseArtwork ? CGFloat(clock.bass) * 0.035 * p.cfg.pulseAmount : 0) : 0.84)
                     .animation(.linear(duration: 0.06), value: clock.bass)
                     .animation(.spring(response: 0.5, dampingFraction: 0.7), value: p.isPlaying)
-                    .padding(.horizontal, 28)
+                    .containerRelativeFrame(.horizontal) { w, _ in w * CGFloat(p.cfg.artworkSize) }
 
                 Spacer(minLength: 0)
 
