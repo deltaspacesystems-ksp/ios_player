@@ -10,6 +10,7 @@ final class HapticsEngine {
     private var contStart = Date.distantPast
     private let q = DispatchQueue(label: "lumen.haptics")
     private var background = false
+    private var backgroundFallback = true
     let supported = CHHapticEngine.capabilitiesForHardware().supportsHaptics
 
     func prepare() {
@@ -27,6 +28,8 @@ final class HapticsEngine {
     }
 
     /// Core Haptics is suspended by iOS in the background; on return we must restart the engine.
+    func setBackgroundFallback(_ on: Bool) { q.async { self.backgroundFallback = on } }
+
     func setBackground(_ b: Bool) {
         q.async {
             self.background = b
@@ -68,8 +71,8 @@ final class HapticsEngine {
     func pulse(_ intensity: Float) {
         q.async {
             if self.background {
-                // Best effort while backgrounded: system "peek" haptic (fixed strength).
-                AudioServicesPlaySystemSound(1519)
+                // Best effort while backgrounded: system "peek" haptic (fixed strength). Optional.
+                if self.backgroundFallback { AudioServicesPlaySystemSound(1519) }
                 return
             }
             guard let e = self.engine else { return }

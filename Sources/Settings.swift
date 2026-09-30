@@ -24,6 +24,7 @@ struct Settings: Codable, Equatable {
     var hapticThreshold = 1.45
     var hapticRumble = true
     var hapticBeats = true
+    var hapticBackground = true
     // Audio
     var eqGains: [Float] = Array(repeating: 0, count: 10)
     var preamp: Float = 0

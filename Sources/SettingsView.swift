@@ -103,6 +103,7 @@ struct SettingsView: View {
                     Slider(value: $player.cfg.hapticStrength, in: 0.1...1.5))
                 Toggle("Continuous rumble (follows bass)", isOn: $player.cfg.hapticRumble)
                 Toggle("Beat taps", isOn: $player.cfg.hapticBeats)
+                Toggle("Background taps (system workaround)", isOn: $player.cfg.hapticBackground)
                 row("Bass cutoff", "\(Int(player.cfg.hapticCutoff)) Hz",
                     Slider(value: $player.cfg.hapticCutoff, in: 40...400, step: 10))
                 row("Beat threshold", String(format: "%.2f", player.cfg.hapticThreshold),

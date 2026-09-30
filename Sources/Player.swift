@@ -347,6 +347,7 @@ final class Player: ObservableObject {
         analyzer.threshold = Float(cfg.hapticThreshold)
         analyzer.rumble = cfg.hapticRumble
         analyzer.beats = cfg.hapticBeats
+        haptics.setBackgroundFallback(cfg.hapticBackground)
         if !cfg.hapticsOn { haptics.stop() }
         timePitch.rate = cfg.speed
         timePitch.pitch = cfg.pitchCents
