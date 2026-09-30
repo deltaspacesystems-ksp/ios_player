@@ -4,6 +4,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-26
@@ -14,17 +17,33 @@ jobs:
       - name: Generate project
         run: xcodegen generate
       - name: Build (unsigned)
+        id: build
         run: |
           set -o pipefail
           xcodebuild -project Lumen.xcodeproj -scheme Lumen -configuration Release \
             -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log
       - name: Package IPA
         run: |
           mkdir Payload
           cp -R build/Build/Products/Release-iphoneos/Lumen.app Payload/
           zip -qr Lumen.ipa Payload
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Lumen-ipa
-          path: Lumen.ipa
+      - name: Publish IPA release
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest Lumen.ipa --title "Lumen (latest build)" --notes "Commit ${GITHUB_SHA}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Publish build report
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          mkdir ../report && cd ../report
+          git init -q -b build-logs
+          git config user.email "ci@lumen"; git config user.name "ci"
+          echo "status=$STATUS" > status.txt
+          echo "sha=${GITHUB_SHA}" >> status.txt
+          grep -E "error:|warning: .*(Sendable|isolat)|BUILD (FAILED|SUCCEEDED)|xcodegen|Error" "$GITHUB_WORKSPACE/build.log" | sort -u | head -150 > errors.txt || true
+          tail -n 150 "$GITHUB_WORKSPACE/build.log" > tail.txt || true
+          git add -A; git commit -q -m "report ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" build-logs
