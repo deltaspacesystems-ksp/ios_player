@@ -2,13 +2,14 @@ import AVKit
 import SwiftUI
 
 struct RoutePicker: UIViewRepresentable {
+    var accent: UIColor
     func makeUIView(context: Context) -> AVRoutePickerView {
         let v = AVRoutePickerView()
         v.tintColor = .white
-        v.activeTintColor = .systemPink
+        v.activeTintColor = accent
         return v
     }
-    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) { uiView.activeTintColor = accent }
 }
 
 struct Backdrop: View {
@@ -53,19 +54,20 @@ struct Backdrop: View {
 
 struct NowPlayingView: View {
     @EnvironmentObject var p: Player
+    @EnvironmentObject var clock: Clock
     @State private var showQueue = false
 
     var body: some View {
         ZStack {
-            Backdrop(tint: p.current?.tint ?? .indigo, bass: p.bass, style: p.cfg.backdrop, art: p.current?.artwork)
+            Backdrop(tint: p.current?.tint ?? .indigo, bass: clock.bass, style: p.cfg.backdrop, art: p.artwork)
             VStack(spacing: 20) {
                 Capsule().fill(.white.opacity(0.4)).frame(width: 40, height: 5).padding(.top, 8)
                 Spacer(minLength: 0)
 
-                ArtworkView(image: p.current?.artwork, radius: p.cfg.artworkRadius)
-                    .shadow(color: (p.current?.tint ?? .pink).opacity(0.6), radius: 30 + CGFloat(p.bass) * 30, y: 16)
-                    .scaleEffect(p.isPlaying ? 1 + (p.cfg.pulseArtwork ? CGFloat(p.bass) * 0.035 * p.cfg.pulseAmount : 0) : 0.84)
-                    .animation(.linear(duration: 0.06), value: p.bass)
+                ArtworkView(image: p.artwork, radius: p.cfg.artworkRadius)
+                    .shadow(color: (p.current?.tint ?? Color.accentColor).opacity(0.6), radius: 30 + CGFloat(clock.bass) * 30, y: 16)
+                    .scaleEffect(p.isPlaying ? 1 + (p.cfg.pulseArtwork ? CGFloat(clock.bass) * 0.035 * p.cfg.pulseAmount : 0) : 0.84)
+                    .animation(.linear(duration: 0.06), value: clock.bass)
                     .animation(.spring(response: 0.5, dampingFraction: 0.7), value: p.isPlaying)
                     .padding(.horizontal, 28)
 
@@ -79,11 +81,11 @@ struct NowPlayingView: View {
                 .padding(.horizontal, 28)
 
                 VStack(spacing: 2) {
-                    Scrubber(value: p.position, total: p.duration) { p.seek($0) }
+                    Scrubber(value: clock.position, total: p.duration) { p.seek($0) }
                     HStack {
-                        Text(formatTime(p.position))
+                        Text(formatTime(clock.position))
                         Spacer()
-                        Text(p.cfg.showRemaining ? "-" + formatTime(max(0, p.duration - p.position)) : formatTime(p.duration))
+                        Text(p.cfg.showRemaining ? "-" + formatTime(max(0, p.duration - clock.position)) : formatTime(p.duration))
                     }
                     .font(.caption).monospacedDigit().foregroundStyle(.white.opacity(0.7))
                 }
@@ -109,7 +111,7 @@ struct NowPlayingView: View {
                         toggle("shuffle", on: p.shuffle) { p.toggleShuffle() }
                         toggle(p.repeatMode == .one ? "repeat.1" : "repeat", on: p.repeatMode != .off) { p.cycleRepeat() }
                         toggle("waveform.path", on: p.cfg.hapticsOn) { p.cfg.hapticsOn.toggle() }
-                        RoutePicker().frame(width: 44, height: 44).lGlass(Circle(), interactive: true)
+                        RoutePicker(accent: UIColor(p.cfg.accent)).frame(width: 44, height: 44).lGlass(Circle(), interactive: true)
                         Button { showQueue = true } label: { Image(systemName: "list.bullet").frame(width: 44, height: 44) }
                             .buttonStyle(.plain).lGlass(Circle(), interactive: true)
                     }
@@ -120,13 +122,14 @@ struct NowPlayingView: View {
             .foregroundStyle(.white)
         }
         .preferredColorScheme(.dark)
+        .tint(p.cfg.accent)
         .sheet(isPresented: $showQueue) { QueueView().presentationDetents([.medium, .large]) }
     }
 
     private func toggle(_ icon: String, on: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon).frame(width: 44, height: 44)
-                .foregroundStyle(on ? Color.pink : .white)
+                .foregroundStyle(on ? Color.accentColor : .white)
         }
         .buttonStyle(.plain)
         .lGlass(Circle(), interactive: true)
@@ -144,6 +147,7 @@ struct QueueView: View {
                 .onDelete { p.removeFromQueue(at: $0) }
             }
             .listStyle(.plain)
+            .tint(p.cfg.accent)
             .navigationTitle("Up Next")
             .navigationBarTitleDisplayMode(.inline)
         }

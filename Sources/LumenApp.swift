@@ -10,6 +10,7 @@ struct LumenApp: App {
             ContentView()
                 .environmentObject(player)
                 .environmentObject(library)
+                .environmentObject(player.clock)
                 .tint(player.cfg.accent)
                 .onOpenURL { url in Task { await library.importFiles([url]) } }
         }

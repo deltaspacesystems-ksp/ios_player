@@ -13,6 +13,7 @@ struct ContentView: View {
             Tab("Videos", systemImage: "play.rectangle.fill") { VideosView(videoTrack: $videoTrack) }
             Tab("Settings", systemImage: "slider.horizontal.3") { SettingsView() }
         }
+        .tint(player.cfg.accent)
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory {
             MiniPlayer()
@@ -22,6 +23,15 @@ struct ContentView: View {
         .sheet(isPresented: $showNow) { NowPlayingView() }
         .fullScreenCover(item: $videoTrack) { VideoScreen(track: $0) }
         .task { await library.reload() }
+        .onAppear { applyWindowTint() }
+        .onChange(of: player.cfg.accentHex) { applyWindowTint() }
+    }
+
+    private func applyWindowTint() {
+        let c = UIColor(player.cfg.accent)
+        for sc in UIApplication.shared.connectedScenes {
+            (sc as? UIWindowScene)?.windows.forEach { $0.tintColor = c }
+        }
     }
 }
 
@@ -54,7 +64,7 @@ struct ArtworkView: View {
             if let image {
                 Image(uiImage: image).resizable().scaledToFill()
             } else {
-                LinearGradient(colors: [.pink, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(colors: [Color.accentColor, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
                     .overlay { Image(systemName: "music.note").font(.title).foregroundStyle(.white.opacity(0.85)) }
             }
         }
@@ -163,7 +173,7 @@ struct TrackRow: View {
     var playing: Bool
     var body: some View {
         HStack(spacing: 12) {
-            ArtworkView(image: track.artwork, radius: 8).frame(width: 50, height: 50)
+            ThumbView(id: track.id, radius: 8).frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title).font(.body).lineLimit(1).foregroundStyle(playing ? Color.accentColor : .primary)
                 Text(track.artist.isEmpty ? "Unknown artist" : track.artist)
@@ -221,7 +231,7 @@ struct MiniPlayer: View {
     @EnvironmentObject var player: Player
     var body: some View {
         HStack(spacing: 10) {
-            ArtworkView(image: player.current?.artwork, radius: 7).frame(width: 34, height: 34)
+            ThumbView(id: player.current?.id, radius: 7).frame(width: 34, height: 34)
             VStack(alignment: .leading, spacing: 0) {
                 Text(player.current?.title ?? "Not Playing").font(.subheadline.weight(.semibold)).lineLimit(1)
                 if let a = player.current?.artist, !a.isEmpty { Text(a).font(.caption).foregroundStyle(.secondary).lineLimit(1) }

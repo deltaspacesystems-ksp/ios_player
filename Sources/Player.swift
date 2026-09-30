@@ -4,6 +4,12 @@ import UIKit
 
 enum RepeatMode: Int { case off, all, one }
 
+final class Clock: ObservableObject {
+    @Published var position: Double = 0
+    @Published var level: Float = 0
+    @Published var bass: Float = 0
+}
+
 enum EQPreset: String, CaseIterable, Identifiable {
     case flat = "Flat", bass = "Bass Boost", vocal = "Vocal", treble = "Treble", rock = "Rock", electronic = "Electronic"
     var id: String { rawValue }
@@ -67,13 +73,17 @@ final class Player: ObservableObject {
     @Published var queue: [Track] = []
     @Published var index = 0
     @Published var isPlaying = false
-    @Published var position: Double = 0
+    // High-frequency values are mirrored into `clock` so only Now Playing redraws at 30 Hz, not the whole app.
+    let clock = Clock()
+    @Published var artwork: UIImage?
+    private var artID: String?
+    var position: Double = 0 { didSet { clock.position = position } }
     @Published var duration: Double = 0
     @Published var repeatMode: RepeatMode = .off
     @Published var shuffle = false
     // Live levels (for UI)
-    @Published var level: Float = 0
-    @Published var bass: Float = 0
+    var level: Float = 0 { didSet { clock.level = level } }
+    var bass: Float = 0 { didSet { clock.bass = bass } }
     // Settings (everything user-customizable lives in Settings.swift)
     @Published var cfg: Settings = Settings.load() {
         didSet {
@@ -188,6 +198,7 @@ final class Player: ObservableObject {
             return
         }
         index = i
+        refreshArtwork()
         other.node.stop()
         let d = active
         d.node.volume = 1
@@ -301,6 +312,7 @@ final class Player: ObservableObject {
         active = inc
         fadeLen = len
         index = n
+        refreshArtwork()
         duration = inc.duration
         position = 0
         updateNowPlaying()
@@ -366,6 +378,19 @@ final class Player: ObservableObject {
         }
     }
 
+    private func refreshArtwork() {
+        guard let t = current else { artwork = nil; artID = nil; return }
+        if t.id == artID { return }
+        artID = t.id
+        artwork = nil
+        let url = t.url, id = t.id
+        Task {
+            let data = await MetaReader.read(url, wantArt: true).art
+            let img = data.flatMap { UIImage(data: $0) }.flatMap { $0.preparingThumbnail(of: CGSize(width: 800, height: 800)) ?? $0 }
+            if artID == id { artwork = img; updateNowPlaying() }
+        }
+    }
+
     // MARK: System integration
 
     private func observeSession() {
@@ -419,7 +444,7 @@ final class Player: ObservableObject {
             MPNowPlayingInfoPropertyElapsedPlaybackTime: position,
             MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(cfg.speed) : 0.0,
         ]
-        if let img = t.artwork { info[MPMediaItemPropertyArtwork] = makeArtwork(img) }
+        if artID == t.id, let img = artwork { info[MPMediaItemPropertyArtwork] = makeArtwork(img) }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 }
