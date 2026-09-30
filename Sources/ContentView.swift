@@ -229,6 +229,8 @@ struct VideosView: View {
 
 struct MiniPlayer: View {
     @EnvironmentObject var player: Player
+    @State private var drag: CGFloat = 0
+    @State private var swipes = 0
     var body: some View {
         HStack(spacing: 10) {
             ThumbView(id: player.current?.id, radius: 7).frame(width: 34, height: 34)
@@ -245,6 +247,18 @@ struct MiniPlayer: View {
         }
         .padding(.horizontal, 14)
         .buttonStyle(.plain)
+        .offset(x: drag / 3)
+        .opacity(1 - min(0.4, abs(drag) / 400))
+        .gesture(
+            DragGesture(minimumDistance: 20)
+                .onChanged { drag = $0.translation.width }
+                .onEnded { v in
+                    if v.translation.width < -60 { player.next(); swipes += 1 }
+                    else if v.translation.width > 60 { player.previous(); swipes += 1 }
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { drag = 0 }
+                }
+        )
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: swipes)
     }
 }
 
