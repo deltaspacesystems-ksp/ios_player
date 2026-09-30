@@ -1,3 +1,4 @@
+import Accelerate
 import AudioToolbox
 import AVFoundation
 import CoreHaptics
@@ -103,16 +104,97 @@ final class Analyzer {
     var rumble = true
     var beats = true
     var publish: (@Sendable (Float, Float) -> Void)?
+    // Spectrum (cava-style bars)
+    var barCount = 32
+    var vizGain: Float = 1
+    var wantBars = false
+    var publishBars: (@Sendable ([Float]) -> Void)?
+    private let fftN = 2048
+    private let fftLog2: vDSP_Length = 11
+    private var fftSetup: FFTSetup?
+    private var window = [Float](repeating: 0, count: 2048)
+    private var ring = [Float](repeating: 0, count: 2048)
+    private var realp = [Float](repeating: 0, count: 1024)
+    private var imagp = [Float](repeating: 0, count: 1024)
+    private var mags = [Float](repeating: 0, count: 1024)
+    private var windowed = [Float](repeating: 0, count: 2048)
+    private var bars: [Float] = []
+    private var edges: [Int] = []
+    private var lastBars: CFTimeInterval = 0
+
     private let haptics: HapticsEngine
     private var lp: Float = 0, peak: Float = 0.05, avg: Float = 0
     private var lastOnset: CFTimeInterval = 0, lastPublish: CFTimeInterval = 0
 
-    init(haptics: HapticsEngine) { self.haptics = haptics }
+    init(haptics: HapticsEngine) {
+        self.haptics = haptics
+        vDSP_hann_window(&window, vDSP_Length(2048), Int32(vDSP_HANN_NORM))
+        fftSetup = vDSP_create_fftsetup(11, FFTRadix(kFFTRadix2))
+    }
+
+    deinit { if let s = fftSetup { vDSP_destroy_fftsetup(s) } }
+
+    private func spectrum(_ buf: AVAudioPCMBuffer, sr: Float, now: CFTimeInterval) {
+        guard wantBars, let setup = fftSetup, let ch = buf.floatChannelData else { return }
+        let n = Int(buf.frameLength)
+        let chs = Int(buf.format.channelCount)
+        let take = min(n, fftN)
+        ring.withUnsafeMutableBufferPointer { r in
+            if take < fftN { memmove(r.baseAddress!, r.baseAddress! + take, (fftN - take) * MemoryLayout<Float>.size) }
+            for k in 0..<take {
+                var v = ch[0][n - take + k]
+                if chs > 1 { v = (v + ch[1][n - take + k]) * 0.5 }
+                r[fftN - take + k] = v
+            }
+        }
+        guard now - lastBars > 1.0 / 32 else { return }
+        lastBars = now
+
+        if edges.count != barCount + 1 {
+            let binHz = sr / Float(fftN)
+            let lo: Float = 50, hi = min(16000, sr / 2 * 0.95)
+            var e: [Int] = []
+            for i in 0...barCount {
+                let f = lo * powf(hi / lo, Float(i) / Float(barCount))
+                var b = Int(f / binHz)
+                if let last = e.last, b <= last { b = last + 1 }
+                e.append(min(b, fftN / 2 - 1 + (i == barCount ? 1 : 0)))
+            }
+            edges = e
+            bars = [Float](repeating: 0, count: barCount)
+        }
+
+        vDSP_vmul(ring, 1, window, 1, &windowed, 1, vDSP_Length(fftN))
+        windowed.withUnsafeBufferPointer { wp in
+            realp.withUnsafeMutableBufferPointer { rp in
+                imagp.withUnsafeMutableBufferPointer { ip in
+                    var split = DSPSplitComplex(realp: rp.baseAddress!, imagp: ip.baseAddress!)
+                    wp.baseAddress!.withMemoryRebound(to: DSPComplex.self, capacity: fftN / 2) { cp in
+                        vDSP_ctoz(cp, 2, &split, 1, vDSP_Length(fftN / 2))
+                    }
+                    vDSP_fft_zrip(setup, &split, 1, fftLog2, FFTDirection(FFT_FORWARD))
+                    vDSP_zvmags(&split, 1, &mags, 1, vDSP_Length(fftN / 2))
+                }
+            }
+        }
+        for b in 0..<barCount {
+            var m: Float = 0
+            let a = edges[b], z = max(edges[b + 1], a + 1)
+            for k in a..<min(z, fftN / 2) { m = max(m, mags[k]) }
+            let amp = sqrt(m) / Float(fftN)
+            let db = 20 * log10(amp + 1e-7)
+            let tilt = Float(b) / Float(barCount) * 12
+            let v = min(1, max(0, (db + 68 + tilt) / 58) * vizGain)
+            bars[b] = v > bars[b] ? bars[b] * 0.35 + v * 0.65 : bars[b] * 0.88 + v * 0.12
+        }
+        publishBars?(bars)
+    }
 
     func process(_ buf: AVAudioPCMBuffer) {
         guard let ch = buf.floatChannelData, buf.frameLength > 0 else { return }
         let n = Int(buf.frameLength)
         let sr = Float(buf.format.sampleRate)
+        spectrum(buf, sr: sr, now: CACurrentMediaTime())
         let a = 1 - exp(-2 * Float.pi * cutoff / sr)
         let x0 = ch[0]
         var full: Float = 0, low: Float = 0

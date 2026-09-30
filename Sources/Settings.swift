@@ -6,6 +6,16 @@ enum FadeCurve: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum VizStyle: String, Codable, CaseIterable, Identifiable {
+    case bars = "Bars", mirror = "Mirrored", dots = "Dots"
+    var id: String { rawValue }
+}
+
+enum VizColor: String, Codable, CaseIterable, Identifiable {
+    case accent = "Accent", art = "Artwork", white = "White"
+    var id: String { rawValue }
+}
+
 enum BackdropStyle: String, Codable, CaseIterable, Identifiable {
     case mesh = "Animated mesh", gradient = "Gradient", blur = "Blurred art", black = "Black"
     var id: String { rawValue }
@@ -25,6 +35,13 @@ struct Settings: Codable, Equatable {
     var hapticRumble = true
     var hapticBeats = true
     var hapticBackground = true
+    // Visualizer
+    var vizOn = true
+    var vizStyle: VizStyle = .bars
+    var vizColor: VizColor = .accent
+    var vizBars = 32
+    var vizHeight = 70.0
+    var vizGain = 1.0
     // AI DJ (offline)
     var djVoice = true
     var djLang = Locale.current.language.languageCode?.identifier == "pl" ? "pl" : "en"

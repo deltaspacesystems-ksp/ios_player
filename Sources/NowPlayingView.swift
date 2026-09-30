@@ -95,6 +95,14 @@ struct NowPlayingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 28)
 
+                if p.cfg.vizOn {
+                    SpectrumView(bars: clock.bars, style: p.cfg.vizStyle, color: vizColor)
+                        .frame(height: CGFloat(p.cfg.vizHeight))
+                        .padding(.horizontal, 28)
+                        .opacity(p.isPlaying ? 1 : 0.5)
+                        .animation(.easeInOut(duration: 0.3), value: p.isPlaying)
+                }
+
                 VStack(spacing: 2) {
                     Scrubber(value: clock.position, total: p.duration) { p.seek($0) }
                     HStack {
@@ -139,7 +147,17 @@ struct NowPlayingView: View {
         }
         .preferredColorScheme(.dark)
         .tint(p.cfg.accent)
+        .onAppear { p.vizVisible = true }
+        .onDisappear { p.vizVisible = false }
         .sheet(isPresented: $showQueue) { QueueView().presentationDetents([.medium, .large]) }
+    }
+
+    private var vizColor: Color {
+        switch p.cfg.vizColor {
+        case .accent: return p.cfg.accent
+        case .art: return p.current?.tint ?? p.cfg.accent
+        case .white: return .white
+        }
     }
 
     private func toggle(_ icon: String, on: Bool, action: @escaping () -> Void) -> some View {
@@ -149,6 +167,37 @@ struct NowPlayingView: View {
         }
         .buttonStyle(.plain)
         .lGlass(Circle(), interactive: true)
+    }
+}
+
+struct SpectrumView: View {
+    let bars: [Float]
+    var style: VizStyle
+    var color: Color
+
+    var body: some View {
+        Canvas { ctx, size in
+            let n = bars.count
+            guard n > 0 else { return }
+            let gap: CGFloat = 3
+            let w = max(1, (size.width - gap * CGFloat(n - 1)) / CGFloat(n))
+            for i in 0..<n {
+                let v = CGFloat(min(1, max(0, bars[i])))
+                let x = CGFloat(i) * (w + gap)
+                let rect: CGRect
+                switch style {
+                case .bars:
+                    let h = max(w, v * size.height)
+                    rect = CGRect(x: x, y: size.height - h, width: w, height: h)
+                case .mirror:
+                    let h = max(w, v * size.height)
+                    rect = CGRect(x: x, y: (size.height - h) / 2, width: w, height: h)
+                case .dots:
+                    rect = CGRect(x: x, y: (1 - v) * (size.height - w), width: w, height: w)
+                }
+                ctx.fill(Path(roundedRect: rect, cornerRadius: w / 2), with: .color(color.opacity(0.55 + 0.45 * Double(v))))
+            }
+        }
     }
 }
 

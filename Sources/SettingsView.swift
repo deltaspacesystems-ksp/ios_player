@@ -24,6 +24,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 folders
+                visualizer
                 dj
                 appearance
                 crossfade
@@ -38,6 +39,24 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .confirmationDialog("Reset everything to defaults?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Reset", role: .destructive) { player.cfg = Settings() }
+            }
+        }
+    }
+
+    private var visualizer: some View {
+        Section("Visualizer") {
+            Toggle("Spectrum on Now Playing", isOn: $player.cfg.vizOn)
+            if player.cfg.vizOn {
+                Picker("Style", selection: $player.cfg.vizStyle) {
+                    ForEach(VizStyle.allCases) { Text($0.rawValue).tag($0) }
+                }
+                Picker("Color", selection: $player.cfg.vizColor) {
+                    ForEach(VizColor.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Stepper("Bars: \(player.cfg.vizBars)", value: $player.cfg.vizBars, in: 12...64, step: 4)
+                row("Height", "\(Int(player.cfg.vizHeight)) pt", Slider(value: $player.cfg.vizHeight, in: 30...160, step: 5))
+                row("Sensitivity", String(format: "%.1f×", player.cfg.vizGain), Slider(value: $player.cfg.vizGain, in: 0.5...2.5))
             }
         }
     }

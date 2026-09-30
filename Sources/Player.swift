@@ -6,6 +6,7 @@ enum RepeatMode: Int { case off, all, one }
 
 final class Clock: ObservableObject {
     @Published var position: Double = 0
+    @Published var bars: [Float] = []
     @Published var level: Float = 0
     @Published var bass: Float = 0
 }
@@ -85,6 +86,8 @@ final class Player: ObservableObject {
     @Published var shuffle = false
     // Live levels (for UI)
     var level: Float = 0 { didSet { clock.level = level } }
+    /// Only run the FFT while Now Playing is on screen.
+    var vizVisible = false { didSet { analyzer.wantBars = cfg.vizOn && vizVisible } }
     var bass: Float = 0 { didSet { clock.bass = bass } }
     // Settings (everything user-customizable lives in Settings.swift)
     @Published var cfg: Settings = Settings.load() {
@@ -132,6 +135,9 @@ final class Player: ObservableObject {
         analyzer = Analyzer(haptics: haptics)
         analyzer.publish = { [weak self] l, b in
             Task { @MainActor in self?.level = l; self?.bass = b }
+        }
+        analyzer.publishBars = { [weak self] bars in
+            Task { @MainActor in self?.clock.bars = bars }
         }
 
         for n in [deckA.node, deckB.node, deckA.tp, deckB.tp, timePitch, eq] as [AVAudioNode] { engine.attach(n) }
@@ -418,6 +424,9 @@ final class Player: ObservableObject {
         analyzer.threshold = Float(cfg.hapticThreshold)
         analyzer.rumble = cfg.hapticRumble
         analyzer.beats = cfg.hapticBeats
+        analyzer.barCount = cfg.vizBars
+        analyzer.vizGain = Float(cfg.vizGain)
+        analyzer.wantBars = cfg.vizOn && vizVisible
         haptics.setBackgroundFallback(cfg.hapticBackground)
         if !cfg.hapticsOn { haptics.stop() }
         timePitch.rate = cfg.speed
