@@ -3,6 +3,7 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
     @EnvironmentObject var player: Player
+    @EnvironmentObject var shazam: ShazamService
     @EnvironmentObject var library: Library
     @State private var showNow = false
     @State private var videoTrack: Track?
@@ -22,6 +23,7 @@ struct ContentView: View {
                 .onTapGesture { if player.current != nil { showNow = true } }
         }
         .sheet(isPresented: $showNow) { NowPlayingView() }
+        .sheet(isPresented: Binding(get: { shazam.showSheet && shazam.presenter == .list }, set: { shazam.showSheet = $0 })) { ShazamSheet() }
         .fullScreenCover(item: $videoTrack) { VideoScreen(track: $0) }
         .task { await library.reload() }
         .onAppear { applyWindowTint() }
@@ -115,6 +117,7 @@ struct Scrubber: View {
 
 struct SongsView: View {
     @EnvironmentObject var player: Player
+    @EnvironmentObject var shazam: ShazamService
     @EnvironmentObject var library: Library
     @State private var query = ""
 
@@ -169,6 +172,7 @@ struct SongsView: View {
                                 .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
                                 .contextMenu {
                                     Button("Start DJ from here", systemImage: "sparkles") { player.startDJ(pool: library.audio, from: t) }
+                                    Button("Identify with Shazam", systemImage: "shazam.logo") { Task { await shazam.identify(t, from: nil, presenter: .list) } }
                                     Button("Play Next", systemImage: "text.insert") { player.playNext(t) }
                                     Button("Add to Queue", systemImage: "text.append") { player.enqueue(t) }
                                     if library.canDelete(t) { Button("Delete", systemImage: "trash", role: .destructive) { library.delete(t) } }

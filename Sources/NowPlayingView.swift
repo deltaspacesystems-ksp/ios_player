@@ -57,6 +57,7 @@ struct NowPlayingView: View {
     @EnvironmentObject var clock: Clock
     @EnvironmentObject var library: Library
     @EnvironmentObject var analysis: AnalysisStore
+    @EnvironmentObject var shazam: ShazamService
     @State private var showQueue = false
 
     var body: some View {
@@ -130,11 +131,23 @@ struct NowPlayingView: View {
                 .sensoryFeedback(.impact(flexibility: .soft), trigger: p.isPlaying)
 
                 GlassEffectContainer(spacing: 16) {
-                    HStack(spacing: 14) {
+                    HStack(spacing: 10) {
                         toggle("shuffle", on: p.shuffle) { p.toggleShuffle() }
                         toggle(p.repeatMode == .one ? "repeat.1" : "repeat", on: p.repeatMode != .off) { p.cycleRepeat() }
                         toggle("waveform.path", on: p.cfg.hapticsOn) { p.cfg.hapticsOn.toggle() }
                         toggle("sparkles", on: p.djActive) { if p.djActive { p.stopDJ() } else { p.startDJ(pool: library.audio) } }
+                        Menu {
+                            Button("Identify this track", systemImage: "waveform.badge.magnifyingglass") {
+                                if let t = p.current { Task { await shazam.identify(t, from: clock.position, presenter: .nowPlaying) } }
+                            }
+                            Button("Listen with microphone", systemImage: "mic") {
+                                p.pause()
+                                Task { await shazam.listen(target: p.current, presenter: .nowPlaying) }
+                            }
+                        } label: {
+                            Image(systemName: "shazam.logo.fill").frame(width: 44, height: 44).foregroundStyle(.white)
+                        }
+                        .lGlass(Circle(), interactive: true)
                         RoutePicker(accent: UIColor(p.cfg.accent)).frame(width: 44, height: 44).lGlass(Circle(), interactive: true)
                         Button { showQueue = true } label: { Image(systemName: "list.bullet").frame(width: 44, height: 44) }
                             .buttonStyle(.plain).lGlass(Circle(), interactive: true)
@@ -149,6 +162,7 @@ struct NowPlayingView: View {
         .tint(p.cfg.accent)
         .onAppear { p.vizVisible = true }
         .onDisappear { p.vizVisible = false }
+        .sheet(isPresented: Binding(get: { shazam.showSheet && shazam.presenter == .nowPlaying }, set: { shazam.showSheet = $0 })) { ShazamSheet() }
         .sheet(isPresented: $showQueue) { QueueView().presentationDetents([.medium, .large]) }
     }
 

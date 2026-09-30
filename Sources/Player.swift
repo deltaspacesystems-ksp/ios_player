@@ -453,6 +453,17 @@ final class Player: ObservableObject {
         }
     }
 
+    /// Called after a Shazam override changed a track's tags/artwork.
+    func refreshMeta(id: String) {
+        for i in queue.indices where queue[i].id == id { queue[i] = OverrideStore.shared.apply(queue[i]) }
+        for i in originalQueue.indices where originalQueue[i].id == id { originalQueue[i] = OverrideStore.shared.apply(originalQueue[i]) }
+        if current?.id == id {
+            artID = nil
+            refreshArtwork()
+            updateNowPlaying()
+        }
+    }
+
     // MARK: Mix playback
 
     func startMix(_ mix: Mix, tracks: [String: Track], startAt: Int = 0, offset: Double? = nil) {
@@ -563,7 +574,7 @@ final class Player: ObservableObject {
         artwork = nil
         let url = t.url, id = t.id
         Task {
-            let data = await MetaReader.read(url, wantArt: true).art
+            let data = OverrideStore.shared.artData(id) ?? (await MetaReader.read(url, wantArt: true).art)
             let img = data.flatMap { UIImage(data: $0) }.flatMap { $0.preparingThumbnail(of: CGSize(width: 800, height: 800)) ?? $0 }
             if artID == id { artwork = img; updateNowPlaying() }
         }

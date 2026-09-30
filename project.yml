@@ -25,6 +25,7 @@ targets:
         UILaunchScreen: {}
         UIBackgroundModes: [audio]
         UIFileSharingEnabled: true
+        NSMicrophoneUsageDescription: Lumen listens through the microphone only when you ask it to identify a song with Shazam.
         LSSupportsOpeningDocumentsInPlace: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait

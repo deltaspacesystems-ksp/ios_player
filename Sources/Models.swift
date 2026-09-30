@@ -377,7 +377,8 @@ final class Library: ObservableObject {
     }
 
     private static func sorted(_ t: [Track]) -> [Track] {
-        t.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        t.map { OverrideStore.shared.apply($0) }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
     func reload() async {
@@ -424,6 +425,11 @@ final class Library: ObservableObject {
         tracks = Self.sorted(out)
         let snapshot = newCache
         Task.detached(priority: .utility) { Library.saveCache(snapshot) }
+    }
+
+    /// Re-applies a saved Shazam override to one track without rescanning.
+    func applyOverride(_ id: String) {
+        if let i = tracks.firstIndex(where: { $0.id == id }) { tracks[i] = OverrideStore.shared.apply(tracks[i]) }
     }
 
     func importFiles(_ urls: [URL]) async {
