@@ -136,15 +136,19 @@ struct SongsView: View {
                                 Button { player.setQueue(items, start: 0, shuffled: false) } label: {
                                     Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.glassProminent)
+                                .buttonStyle(.borderedProminent)
                                 Button { player.setQueue(items, start: Int.random(in: 0..<items.count), shuffled: true) } label: {
                                     Label("Shuffle", systemImage: "shuffle").frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.glass)
+                                .buttonStyle(.bordered)
                             }
+                            .buttonBorderShape(.capsule)
+                            .controlSize(.large)
+                            .font(.body.weight(.semibold))
                             .disabled(items.isEmpty)
                             .listRowBackground(Color.clear)
-                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
                         }
                         Section {
                             ForEach(items) { t in
