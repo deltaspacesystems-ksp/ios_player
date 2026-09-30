@@ -145,6 +145,12 @@ struct SongsView: View {
                                         .foregroundStyle(player.cfg.accent)
                                         .background(player.cfg.accent.opacity(0.18), in: Capsule())
                                 }
+                                Button { player.startDJ(pool: library.audio) } label: {
+                                    Label("DJ", systemImage: "sparkles")
+                                        .frame(maxWidth: .infinity, minHeight: 50)
+                                        .foregroundStyle(player.cfg.accent)
+                                        .background(player.cfg.accent.opacity(0.18), in: Capsule())
+                                }
                             }
                             .buttonStyle(.plain)
                             .font(.body.weight(.semibold))
@@ -161,6 +167,7 @@ struct SongsView: View {
                                 .buttonStyle(.plain)
                                 .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
                                 .contextMenu {
+                                    Button("Start DJ from here", systemImage: "sparkles") { player.startDJ(pool: library.audio, from: t) }
                                     Button("Play Next", systemImage: "text.insert") { player.playNext(t) }
                                     Button("Add to Queue", systemImage: "text.append") { player.enqueue(t) }
                                     if library.canDelete(t) { Button("Delete", systemImage: "trash", role: .destructive) { library.delete(t) } }

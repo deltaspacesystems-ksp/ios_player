@@ -1,9 +1,11 @@
+import AVFoundation
 import SwiftUI
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var player: Player
     @EnvironmentObject var library: Library
+    @EnvironmentObject var analysis: AnalysisStore
     @State private var addFolder = false
     @State private var confirmReset = false
 
@@ -22,6 +24,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 folders
+                dj
                 appearance
                 crossfade
                 haptics
@@ -35,6 +38,55 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .confirmationDialog("Reset everything to defaults?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Reset", role: .destructive) { player.cfg = Settings() }
+            }
+        }
+    }
+
+    private var voices: [AVSpeechSynthesisVoice] {
+        let prefix = player.cfg.djLang == "pl" ? "pl" : "en"
+        return AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix(prefix) }
+    }
+
+    private var dj: some View {
+        Group {
+            Section {
+                Toggle("Voice announcements", isOn: $player.cfg.djVoice)
+                if player.cfg.djVoice {
+                    Picker("Language", selection: $player.cfg.djLang) {
+                        Text("Polski").tag("pl")
+                        Text("English").tag("en")
+                    }
+                    Picker("Voice", selection: $player.cfg.djVoiceID) {
+                        Text("Automatic").tag("")
+                        ForEach(voices, id: \.identifier) { v in
+                            Text(v.name + (v.quality == .premium ? " (premium)" : v.quality == .enhanced ? " (enhanced)" : "")).tag(v.identifier)
+                        }
+                    }
+                    row("Speech rate", String(format: "%.2f", player.cfg.djRate), Slider(value: $player.cfg.djRate, in: 0.35...0.6))
+                    row("Voice volume", "\(Int(player.cfg.djVolume * 100))%", Slider(value: $player.cfg.djVolume, in: 0.3...1))
+                    row("Music level while talking", "\(Int(player.cfg.djDuck * 100))%", Slider(value: $player.cfg.djDuck, in: 0.05...1))
+                    Stepper("Announce every \(player.cfg.djEvery) track(s)", value: $player.cfg.djEvery, in: 1...10)
+                    Button("Test voice", systemImage: "speaker.wave.2") { player.testVoice() }
+                }
+                Picker("Mood", selection: $player.cfg.djMood) {
+                    ForEach(DJMood.allCases) { Text($0.rawValue).tag($0) }
+                }
+                Stepper("Mix length: \(player.cfg.djLength) tracks", value: $player.cfg.djLength, in: 10...200, step: 10)
+                row("DJ crossfade", "\(Int(player.cfg.djFade)) s", Slider(value: $player.cfg.djFade, in: 1...20, step: 1))
+                Toggle("Match tempo in transitions", isOn: $player.cfg.djTempoMatch)
+            } header: { Text("DJ (offline)") } footer: {
+                Text("Builds mixes by tempo, key (Camelot) and energy, all on-device. Start it with the DJ button on Songs or the sparkles button in Now Playing.")
+            }
+            Section("Library analysis") {
+                if analysis.running {
+                    ProgressView(value: Double(analysis.done), total: Double(max(1, analysis.total)))
+                    Text("Analyzing \(analysis.done) / \(analysis.total)").foregroundStyle(.secondary)
+                } else {
+                    Text("\(analysis.count) of \(library.audio.count) tracks analyzed").foregroundStyle(.secondary)
+                    Button("Analyze library", systemImage: "waveform.badge.magnifyingglass") {
+                        Task { await analysis.analyze(library.audio) }
+                    }
+                }
             }
         }
     }

@@ -25,6 +25,18 @@ struct Settings: Codable, Equatable {
     var hapticRumble = true
     var hapticBeats = true
     var hapticBackground = true
+    // AI DJ (offline)
+    var djVoice = true
+    var djLang = Locale.current.language.languageCode?.identifier == "pl" ? "pl" : "en"
+    var djVoiceID = ""
+    var djRate = 0.5
+    var djVolume = 1.0
+    var djDuck = 0.35
+    var djEvery = 1
+    var djTempoMatch = true
+    var djMood: DJMood = .flow
+    var djLength = 40
+    var djFade = 8.0
     // Audio
     var eqGains: [Float] = Array(repeating: 0, count: 10)
     var preamp: Float = 0

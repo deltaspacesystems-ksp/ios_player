@@ -55,6 +55,8 @@ struct Backdrop: View {
 struct NowPlayingView: View {
     @EnvironmentObject var p: Player
     @EnvironmentObject var clock: Clock
+    @EnvironmentObject var library: Library
+    @EnvironmentObject var analysis: AnalysisStore
     @State private var showQueue = false
 
     var body: some View {
@@ -76,6 +78,18 @@ struct NowPlayingView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(p.current?.title ?? "Not Playing").font(.title2.bold()).lineLimit(1)
                     Text(p.current?.artist ?? "").font(.title3).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                    if p.djActive || (p.current.flatMap { analysis.results[$0.id] } != nil) {
+                        HStack(spacing: 8) {
+                            if let a = p.current.flatMap({ analysis.results[$0.id] }) {
+                                Text("\(Int(a.bpm.rounded())) BPM")
+                                Text(a.keyName)
+                            }
+                            if p.djActive { Label("DJ", systemImage: "sparkles") }
+                        }
+                        .font(.caption.bold())
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(.white.opacity(0.15), in: Capsule())
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 28)
@@ -111,6 +125,7 @@ struct NowPlayingView: View {
                         toggle("shuffle", on: p.shuffle) { p.toggleShuffle() }
                         toggle(p.repeatMode == .one ? "repeat.1" : "repeat", on: p.repeatMode != .off) { p.cycleRepeat() }
                         toggle("waveform.path", on: p.cfg.hapticsOn) { p.cfg.hapticsOn.toggle() }
+                        toggle("sparkles", on: p.djActive) { if p.djActive { p.stopDJ() } else { p.startDJ(pool: library.audio) } }
                         RoutePicker(accent: UIColor(p.cfg.accent)).frame(width: 44, height: 44).lGlass(Circle(), interactive: true)
                         Button { showQueue = true } label: { Image(systemName: "list.bullet").frame(width: 44, height: 44) }
                             .buttonStyle(.plain).lGlass(Circle(), interactive: true)

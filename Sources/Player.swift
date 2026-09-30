@@ -28,6 +28,7 @@ enum EQPreset: String, CaseIterable, Identifiable {
 /// One of two alternating players used for crossfading.
 final class Deck {
     let node = AVAudioPlayerNode()
+    let tp = AVAudioUnitTimePitch()
     var file: AVAudioFile?
     var gen = 0
     var startFrame: AVAudioFramePosition = 0
@@ -107,6 +108,16 @@ final class Player: ObservableObject {
     private var originalQueue: [Track] = []
     private var timer: Timer?
 
+    // AI DJ
+    @Published var djActive = false
+    let analysis = AnalysisStore()
+    let voice = DJVoice()
+    private var djPool: [Track] = []
+    private var announcedID: String?
+    private var announceCount = 0
+    private var tempoRatio: Double = 1
+    private var rampTask: Task<Void, Never>?
+
     private let haptics = HapticsEngine()
     private let analyzer: Analyzer
 
@@ -116,7 +127,10 @@ final class Player: ObservableObject {
             Task { @MainActor in self?.level = l; self?.bass = b }
         }
 
-        for n in [deckA.node, deckB.node, timePitch, eq] as [AVAudioNode] { engine.attach(n) }
+        for n in [deckA.node, deckB.node, deckA.tp, deckB.tp, timePitch, eq] as [AVAudioNode] { engine.attach(n) }
+        deckA.tp.bypass = true
+        deckB.tp.bypass = true
+        voice.onSpeaking = { [weak self] on in self?.rampMixer(to: on ? Float(self?.cfg.djDuck ?? 0.35) : 1) }
         engine.connect(engine.mainMixerNode, to: timePitch, format: nil)
         engine.connect(timePitch, to: eq, format: nil)
         engine.connect(eq, to: engine.outputNode, format: nil)
@@ -137,6 +151,7 @@ final class Player: ObservableObject {
 
     func setQueue(_ tracks: [Track], start: Int, shuffled: Bool? = nil) {
         guard tracks.indices.contains(start) else { return }
+        stopDJ()
         if let s = shuffled { shuffle = s }
         originalQueue = tracks
         if shuffle {
@@ -267,7 +282,8 @@ final class Player: ObservableObject {
 
     private func load(_ d: Deck, _ file: AVAudioFile, from t: Double) {
         d.node.stop()
-        engine.connect(d.node, to: engine.mainMixerNode, format: file.processingFormat)
+        engine.connect(d.node, to: d.tp, format: file.processingFormat)
+        engine.connect(d.tp, to: engine.mainMixerNode, format: file.processingFormat)
         d.schedule(file, from: t) { [weak self] deck, gen in
             MainActor.assumeIsolated { self?.deckEnded(deck, gen) }
         }
@@ -280,6 +296,7 @@ final class Player: ObservableObject {
 
     private func autoNext() -> Int? {
         if repeatMode == .one { return index }
+        if djActive, index + 1 >= queue.count - 1 { extendDJ() }
         if index + 1 < queue.count { return index + 1 }
         return repeatMode == .all ? 0 : nil
     }
@@ -293,10 +310,13 @@ final class Player: ObservableObject {
             let g = fadeGains(p)
             out.node.volume = g.out
             a.node.volume = g.inn
+            if tempoRatio != 1 { a.tp.rate = Float(tempoRatio + (1 - tempoRatio) * p) }
             if p >= 1 { endFade() }
         } else if duration > 0, let n = autoNext() {
             let remaining = duration - position
-            let len = max(0.05, min(cfg.crossfade, duration * 0.4))
+            let base = djActive ? cfg.djFade : cfg.crossfade
+            let len = max(0.05, min(base, duration * 0.4))
+            announceIfNeeded(n, remaining: remaining, len: len)
             if remaining <= len && position > 1 { startFade(to: n, len: max(0.05, remaining)) }
         }
     }
@@ -306,6 +326,19 @@ final class Player: ObservableObject {
         let out = active
         let inc = other
         inc.node.volume = 0
+        tempoRatio = 1
+        inc.tp.rate = 1
+        inc.tp.bypass = true
+        if djActive, cfg.djTempoMatch, queue.indices.contains(index),
+           let ao = analysis.results[queue[index].id], let ai = analysis.results[queue[n].id], ao.bpm > 0, ai.bpm > 0 {
+            var r = ao.bpm / ai.bpm
+            for c in [r * 2, r / 2] where abs(c - 1) < abs(r - 1) { r = c }
+            if abs(r - 1) <= 0.08, abs(r - 1) > 0.002 {
+                tempoRatio = r
+                inc.tp.bypass = false
+                inc.tp.rate = Float(r)
+            }
+        }
         load(inc, file, from: 0)
         inc.node.play()
         outgoing = out
@@ -323,6 +356,8 @@ final class Player: ObservableObject {
         outgoing?.node.volume = 1
         outgoing = nil
         active.node.volume = 1
+        tempoRatio = 1
+        for d in [deckA, deckB] { d.tp.rate = 1; d.tp.bypass = true }
     }
 
     private func cancelFade() {
@@ -376,6 +411,84 @@ final class Player: ObservableObject {
             b.bandwidth = 1
             b.gain = g[i]
             b.bypass = false
+        }
+    }
+
+    // MARK: AI DJ (offline)
+
+    func startDJ(pool: [Track], from: Track? = nil) {
+        let audio = pool.filter { !$0.isVideo }
+        guard let start = from ?? current ?? audio.randomElement() else { return }
+        djPool = audio
+        announcedID = nil
+        announceCount = 0
+        let plan = DJPlanner.build(start: start, pool: audio, analysis: analysis.results, mood: cfg.djMood, length: cfg.djLength)
+        djActive = true
+        shuffle = false
+        originalQueue = plan
+        queue = plan
+        play(0)
+        if cfg.djVoice { speak(DJScript.introLine(start, lang: cfg.djLang)) }
+        if analysis.count < max(1, audio.count / 5) {
+            Task {
+                await analysis.analyze(audio)
+                replanDJ()
+            }
+        }
+    }
+
+    func stopDJ() {
+        guard djActive else { return }
+        djActive = false
+        voice.stop()
+    }
+
+    private func replanDJ() {
+        guard djActive, let cur = current else { return }
+        let plan = DJPlanner.build(start: cur, pool: djPool, analysis: analysis.results, mood: cfg.djMood, length: cfg.djLength)
+        queue = plan
+        originalQueue = plan
+        index = 0
+    }
+
+    private func extendDJ() {
+        guard djPool.count > 1, let last = queue.last else { return }
+        let recent = Set(queue.suffix(max(1, djPool.count / 2)).map(\.id))
+        var plan = Array(DJPlanner.build(start: last, pool: djPool, analysis: analysis.results,
+                                         mood: cfg.djMood, length: cfg.djLength, exclude: recent).dropFirst())
+        if plan.isEmpty { plan = Array(djPool.filter { $0.id != last.id }.shuffled().prefix(10)) }
+        queue += plan
+        originalQueue += plan
+    }
+
+    private func announceIfNeeded(_ n: Int, remaining: Double, len: Double) {
+        guard djActive, cfg.djVoice, queue.indices.contains(n), announcedID != queue[n].id,
+              remaining <= len + 5, position > 2 else { return }
+        announcedID = queue[n].id
+        announceCount += 1
+        guard announceCount % max(1, cfg.djEvery) == 0 else { return }
+        speak(DJScript.nextLine(queue[n], analysis.results[queue[n].id], lang: cfg.djLang))
+    }
+
+    private func speak(_ text: String) {
+        voice.speak(text, lang: cfg.djLang, voiceID: cfg.djVoiceID, rate: Float(cfg.djRate), volume: Float(cfg.djVolume))
+    }
+
+    func testVoice() {
+        speak(cfg.djLang == "pl" ? "Cześć, tu Twój DJ Lumen. Tak brzmi mój głos." : "Hey, it's your Lumen DJ. This is how I sound.")
+    }
+
+    /// Smoothly duck (or restore) the music under the DJ's voice.
+    private func rampMixer(to target: Float) {
+        rampTask?.cancel()
+        rampTask = Task {
+            let m = engine.mainMixerNode
+            let from = m.outputVolume
+            for i in 1...10 {
+                if Task.isCancelled { return }
+                m.outputVolume = from + (target - from) * Float(i) / 10
+                try? await Task.sleep(for: .milliseconds(30))
+            }
         }
     }
 
