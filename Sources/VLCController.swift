@@ -109,7 +109,7 @@ final class VLCMetaParser: NSObject, VLCMediaParserDelegate, @unchecked Sendable
         guard let media = VLCMedia(url: url) else { return nil }
         return await withCheckedContinuation { cont in
             lock.lock(); conts[ObjectIdentifier(media)] = cont; lock.unlock()
-            let r = parser.queueMedia(media, options: VLCMediaParsingOptions(rawValue: 0x01 | 0x02))
+            let r = parser.queue(media, options: VLCMediaParsingOptions(rawValue: 0x01 | 0x02))
             if r != 0 {
                 lock.lock(); let c = conts.removeValue(forKey: ObjectIdentifier(media)); lock.unlock()
                 c?.resume(returning: nil)
@@ -117,7 +117,7 @@ final class VLCMetaParser: NSObject, VLCMediaParserDelegate, @unchecked Sendable
         }
     }
 
-    func mediaFinishedParsing(_ media: VLCMedia, withStatus status: VLCMediaParsedStatus) {
+    func mediaFinishedParsing(_ media: VLCMedia, with status: VLCMediaParsedStatus) {
         lock.lock(); let c = conts.removeValue(forKey: ObjectIdentifier(media)); lock.unlock()
         c?.resume(returning: status == .done ? media : nil)
     }
@@ -423,7 +423,7 @@ final class VLCController: NSObject, ObservableObject, VLCMediaPlayerDelegate, V
             show("A point set")
         case 1:
             abB = timeMs
-            if abB > abA + 500, player.setABLoop(from: VLCTime(int: Int32(abA)), to: VLCTime(int: Int32(abB))) {
+            if abB > abA + 500, player.setABLoopFromTime(VLCTime(int: Int32(abA)), toTime: VLCTime(int: Int32(abB))) {
                 abState = 2
                 show("A–B repeat on")
             } else {
