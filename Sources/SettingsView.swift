@@ -24,6 +24,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 folders
+                vlcEngine
                 visualizer
                 dj
                 appearance
@@ -33,6 +34,9 @@ struct SettingsView: View {
                 playback
                 video
                 Section {
+                    NavigationLink { LogViewer() } label: { Label("Logs & diagnostics", systemImage: "doc.text.magnifyingglass") }
+                }
+                Section {
                     Button("Reset all settings", role: .destructive) { confirmReset = true }
                 } footer: { Text("Formats: MP3, AAC/M4A, ALAC, FLAC, WAV, AIFF, CAF (audio) and MP4/MOV/M4V (video).") }
             }
@@ -40,6 +44,35 @@ struct SettingsView: View {
             .confirmationDialog("Reset everything to defaults?", isPresented: $confirmReset, titleVisibility: .visible) {
                 Button("Reset", role: .destructive) { player.cfg = Settings() }
             }
+        }
+    }
+
+    private var vlcEngine: some View {
+        Section {
+            Picker("Video engine", selection: $player.cfg.videoEngine) {
+                ForEach(VideoEngine.allCases) { Text($0.rawValue).tag($0) }
+            }
+            Toggle("VLC orange theme in the VLC player", isOn: $player.cfg.vlcOrangeTheme)
+            Toggle("Remember playback position", isOn: $player.cfg.vlcRememberPosition)
+            Toggle("Play next automatically", isOn: $player.cfg.vlcAutoNext)
+            Toggle("Gestures (brightness, volume, seek)", isOn: $player.cfg.vlcGestures)
+            Toggle("Hardware decoding", isOn: $player.cfg.vlcHardware)
+            Stepper("Network caching: \(player.cfg.vlcNetCache) ms", value: $player.cfg.vlcNetCache, in: 0...10000, step: 250)
+            Stepper("File caching: \(player.cfg.vlcFileCache) ms", value: $player.cfg.vlcFileCache, in: 0...5000, step: 100)
+            ColorPicker("Subtitle color", selection: Binding(get: { Color(hex: player.cfg.vlcSubColorHex) }, set: { player.cfg.vlcSubColorHex = $0.hexString }), supportsOpacity: false)
+            Picker("Subtitle size", selection: $player.cfg.vlcSubFontSize) {
+                Text("Smaller").tag(20)
+                Text("Small").tag(18)
+                Text("Normal").tag(16)
+                Text("Large").tag(12)
+                Text("Larger").tag(6)
+            }
+            Toggle("Bold subtitles", isOn: $player.cfg.vlcSubBold)
+            TextField("Subtitle encoding (e.g. CP1250, empty = auto)", text: $player.cfg.vlcSubEncoding)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+        } header: { Text("VLC engine (libvlc 4)") } footer: {
+            Text("Plays MKV, AVI, WebM, FLV, WMV, TS, OGG, Opus, WMA, APE and more. Changes apply to the next video you open.")
         }
     }
 

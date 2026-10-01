@@ -4,8 +4,13 @@ import SwiftUI
 import UIKit
 
 enum MediaExt {
-    static let audio: Set<String> = ["mp3", "m4a", "aac", "wav", "aiff", "aif", "caf", "flac", "alac"]
-    static let video: Set<String> = ["mp4", "m4v", "mov"]
+    static let nativeAudio: Set<String> = ["mp3", "m4a", "aac", "wav", "aiff", "aif", "caf", "flac", "alac"]
+    static let nativeVideo: Set<String> = ["mp4", "m4v", "mov"]
+    /// Played by the VLC engine only (Apple frameworks can't decode these).
+    static let vlcAudio: Set<String> = ["opus", "ogg", "oga", "wma", "ape", "wv", "mka", "mpc", "tta", "ac3", "dts", "amr", "spx"]
+    static let vlcVideo: Set<String> = ["mkv", "avi", "webm", "flv", "wmv", "ts", "m2ts", "mts", "mpg", "mpeg", "vob", "3gp", "ogv", "rmvb", "asf", "divx", "m2v"]
+    static var audio: Set<String> { nativeAudio.union(vlcAudio) }
+    static var video: Set<String> { nativeVideo.union(vlcVideo) }
 }
 
 struct Track: Identifiable, Equatable {
@@ -25,6 +30,9 @@ struct Track: Identifiable, Equatable {
     }
 
     static func == (a: Track, b: Track) -> Bool { a.id == b.id }
+
+    /// Audio that only the VLC engine can play (opus, ogg, wma, ape ...).
+    var vlcOnly: Bool { MediaExt.vlcAudio.contains(url.pathExtension.lowercased()) }
 }
 
 struct CachedMeta: Codable {
@@ -131,6 +139,21 @@ enum MetaReader {
     static func read(_ url: URL, wantArt: Bool) async -> Result {
         var r = Result()
         let ext = url.pathExtension.lowercased()
+        if MediaExt.vlcAudio.contains(ext) || MediaExt.vlcVideo.contains(ext) {
+            // Apple frameworks can't read these — let libvlc parse tags, length and cover art.
+            r.isVideo = MediaExt.vlcVideo.contains(ext)
+            if let m = await VLCMetaParser.shared.parse(url) {
+                let md = m.metaData
+                r.title = md.title
+                r.artist = md.artist
+                r.album = md.album
+                r.duration = Double(m.length.intValue) / 1000
+                if wantArt { r.art = md.artwork?.pngData() }
+            } else {
+                Log.w("scan", "libvlc could not parse \(url.lastPathComponent)")
+            }
+            return r
+        }
         let asset = AVURLAsset(url: url)
         if let d = try? await asset.load(.duration), d.seconds.isFinite { r.duration = d.seconds }
         if ext == "flac" {
@@ -142,7 +165,7 @@ enum MetaReader {
             if r.duration <= 0, let d = f.duration { r.duration = d }
         }
         if r.title == nil || (wantArt && r.art == nil) { await av(asset, &r, wantArt) }
-        if MediaExt.video.contains(ext) {
+        if MediaExt.nativeVideo.contains(ext) {
             let vt = (try? await asset.loadTracks(withMediaType: .video)) ?? []
             r.isVideo = !vt.isEmpty
         }
@@ -291,11 +314,13 @@ struct LibraryFolder: Identifiable {
 final class Library: ObservableObject {
     @Published var tracks: [Track] = [] {
         didSet {
-            audio = tracks.filter { !$0.isVideo }
+            audio = tracks.filter { !$0.isVideo && !$0.vlcOnly }
+            vlcAudio = tracks.filter { !$0.isVideo && $0.vlcOnly }
             videos = tracks.filter { $0.isVideo }
         }
     }
     @Published private(set) var audio: [Track] = []
+    @Published private(set) var vlcAudio: [Track] = []
     @Published private(set) var videos: [Track] = []
     @Published var folders: [LibraryFolder] = []
     @Published var scanning = false

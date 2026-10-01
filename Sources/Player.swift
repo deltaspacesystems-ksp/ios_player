@@ -429,6 +429,9 @@ final class Player: ObservableObject {
         analyzer.vizFPS = cfg.vizFPS
         analyzer.wantBars = cfg.vizOn && vizVisible
         haptics.setBackgroundFallback(cfg.hapticBackground)
+        Log.shared.minLevel = cfg.logLevel
+        Log.shared.toFile = cfg.logToFile
+        VLCSupport.configureLogging(level: cfg.vlcLogLevel)
         if !cfg.hapticsOn { haptics.stop() }
         timePitch.rate = cfg.speed
         timePitch.pitch = cfg.pitchCents

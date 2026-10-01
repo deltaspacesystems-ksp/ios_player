@@ -7,6 +7,8 @@ struct LumenApp: App {
     @StateObject private var mixStore = MixStore()
     @StateObject private var shazam = ShazamService()
 
+    init() { Log.shared.startSession() }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

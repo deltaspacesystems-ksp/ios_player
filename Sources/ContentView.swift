@@ -24,10 +24,26 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showNow) { NowPlayingView() }
         .sheet(isPresented: Binding(get: { shazam.showSheet && shazam.presenter == .list }, set: { shazam.showSheet = $0 })) { ShazamSheet() }
-        .fullScreenCover(item: $videoTrack) { VideoScreen(track: $0) }
+        .fullScreenCover(item: $videoTrack) { t in
+            if useVLC(for: t) {
+                let list = library.videos
+                let start = list.firstIndex(of: t) ?? 0
+                VLCPlayerScreen(items: list.map { VLCItem(url: $0.url, title: $0.title) }, start: start, cfg: player.cfg)
+            } else {
+                VideoScreen(track: t)
+            }
+        }
         .task { await library.reload() }
         .onAppear { applyWindowTint() }
         .onChange(of: player.cfg.accentHex) { applyWindowTint() }
+    }
+
+    private func useVLC(for t: Track) -> Bool {
+        switch player.cfg.videoEngine {
+        case .vlc: return true
+        case .native: return false
+        case .auto: return !MediaExt.nativeVideo.contains(t.url.pathExtension.lowercased())
+        }
     }
 
     private func applyWindowTint() {
@@ -81,6 +97,7 @@ struct ArtworkView: View {
 struct Scrubber: View {
     var value: Double
     var total: Double
+    var fill: Color = .white
     var onSeek: (Double) -> Void
     @State private var dragging = false
     @State private var dragValue = 0.0
@@ -90,7 +107,7 @@ struct Scrubber: View {
             let frac = total > 0 ? min(1, max(0, (dragging ? dragValue : value) / total)) : 0
             ZStack(alignment: .leading) {
                 Capsule().fill(.white.opacity(0.25))
-                Capsule().fill(.white).frame(width: g.size.width * frac)
+                Capsule().fill(fill).frame(width: g.size.width * frac)
             }
             .frame(height: dragging ? 14 : 7)
             .frame(maxHeight: .infinity)
@@ -120,6 +137,7 @@ struct SongsView: View {
     @EnvironmentObject var shazam: ShazamService
     @EnvironmentObject var library: Library
     @State private var query = ""
+    @State private var vlcAudioTrack: Track?
 
     private var items: [Track] {
         query.isEmpty ? library.audio : library.audio.filter {
@@ -130,7 +148,7 @@ struct SongsView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if library.audio.isEmpty {
+                if library.audio.isEmpty && library.vlcAudio.isEmpty {
                     ContentUnavailableView("No music yet", systemImage: "music.note.list",
                         description: Text("Tap + to import files or add a folder (iCloud Drive / On My iPhone) that Lumen keeps scanning."))
                 } else {
@@ -179,6 +197,14 @@ struct SongsView: View {
                                 }
                             }
                         }
+                        if !library.vlcAudio.isEmpty {
+                            Section("Other formats (played by VLC)") {
+                                ForEach(library.vlcAudio) { t in
+                                    Button { vlcAudioTrack = t } label: { TrackRow(track: t, playing: false) }
+                                        .buttonStyle(.plain)
+                                }
+                            }
+                        }
                     }
                     .listStyle(.plain)
                 }
@@ -186,6 +212,10 @@ struct SongsView: View {
             .navigationTitle("Songs")
             .searchable(text: $query)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { ImportButton() } }
+            .fullScreenCover(item: $vlcAudioTrack) { t in
+                VLCPlayerScreen(items: library.vlcAudio.map { VLCItem(url: $0.url, title: $0.title) },
+                                start: library.vlcAudio.firstIndex(of: t) ?? 0, cfg: player.cfg)
+            }
         }
     }
 }

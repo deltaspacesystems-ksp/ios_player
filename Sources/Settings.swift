@@ -16,6 +16,11 @@ enum VizColor: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+enum VideoEngine: String, Codable, CaseIterable, Identifiable {
+    case auto = "Auto (Apple for MP4/MOV, VLC for the rest)", vlc = "Always VLC", native = "Always Apple"
+    var id: String { rawValue }
+}
+
 enum BackdropStyle: String, Codable, CaseIterable, Identifiable {
     case mesh = "Animated mesh", gradient = "Gradient", blur = "Blurred art", black = "Black"
     var id: String { rawValue }
@@ -43,6 +48,23 @@ struct Settings: Codable, Equatable {
     var vizHeight = 70.0
     var vizGain = 1.0
     var vizFPS = 30.0
+    // VLC engine
+    var videoEngine: VideoEngine = .auto
+    var vlcOrangeTheme = true
+    var vlcNetCache = 1500
+    var vlcFileCache = 1000
+    var vlcHardware = true
+    var vlcSubColorHex = "FFFFFF"
+    var vlcSubFontSize = 16
+    var vlcSubBold = false
+    var vlcSubEncoding = ""
+    var vlcRememberPosition = true
+    var vlcAutoNext = true
+    var vlcGestures = true
+    // Logging
+    var logLevel: LogLevel = .info
+    var vlcLogLevel = 1
+    var logToFile = true
     // AI DJ (offline)
     var djVoice = true
     var djLang = Locale.current.language.languageCode?.identifier == "pl" ? "pl" : "en"
@@ -76,6 +98,7 @@ struct Settings: Codable, Equatable {
     var videoSpeed: Float = 1
 
     var accent: Color { Color(hex: accentHex) }
+    var vlcSubColorRGB: UInt32 { UInt32(vlcSubColorHex, radix: 16) ?? 0xFFFFFF }
 
     private static let key = "lumen.settings.v1"
 
