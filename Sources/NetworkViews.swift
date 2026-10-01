@@ -65,7 +65,7 @@ final class NetworkStore: ObservableObject {
         for entry in list {
             guard let d = entry as? [String: Any], let name = d[VLCMediaDiscovererName] as? String else { continue }
             let disc = VLCMediaDiscoverer(name: name)
-            let r = disc.startDiscoverer()
+            let r = disc.start()
             Log.i("net", "Discoverer \(name) started (\(r))")
             discoverers.append(disc)
         }
