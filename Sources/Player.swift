@@ -426,6 +426,7 @@ final class Player: ObservableObject {
         analyzer.beats = cfg.hapticBeats
         analyzer.barCount = cfg.vizBars
         analyzer.vizGain = Float(cfg.vizGain)
+        analyzer.vizFPS = cfg.vizFPS
         analyzer.wantBars = cfg.vizOn && vizVisible
         haptics.setBackgroundFallback(cfg.hapticBackground)
         if !cfg.hapticsOn { haptics.stop() }

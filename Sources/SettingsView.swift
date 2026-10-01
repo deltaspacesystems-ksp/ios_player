@@ -54,6 +54,7 @@ struct SettingsView: View {
                     ForEach(VizColor.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                row("Refresh rate", "\(Int(player.cfg.vizFPS)) fps", Slider(value: $player.cfg.vizFPS, in: 1...60, step: 1))
                 Stepper("Bars: \(player.cfg.vizBars)", value: $player.cfg.vizBars, in: 12...64, step: 4)
                 row("Height", "\(Int(player.cfg.vizHeight)) pt", Slider(value: $player.cfg.vizHeight, in: 30...160, step: 5))
                 row("Sensitivity", String(format: "%.1f×", player.cfg.vizGain), Slider(value: $player.cfg.vizGain, in: 0.5...2.5))

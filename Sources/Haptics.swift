@@ -107,7 +107,13 @@ final class Analyzer {
     // Spectrum (cava-style bars)
     var barCount = 32
     var vizGain: Float = 1
-    var wantBars = false
+    var wantBars = false { didSet { if wantBars != oldValue { restartTimer() } } }
+    var vizFPS: Double = 30 { didSet { if vizFPS != oldValue { restartTimer() } } }
+    private var vizTimer: DispatchSourceTimer?
+    private let vizQueue = DispatchQueue(label: "lumen.viz", qos: .userInteractive)
+    private let ringLock = NSLock()
+    private var snapshot = [Float](repeating: 0, count: 2048)
+    private var lastSR: Float = 44100
     var publishBars: (@Sendable ([Float]) -> Void)?
     private let fftN = 2048
     private let fftLog2: vDSP_Length = 11
@@ -134,11 +140,14 @@ final class Analyzer {
 
     deinit { if let s = fftSetup { vDSP_destroy_fftsetup(s) } }
 
-    private func spectrum(_ buf: AVAudioPCMBuffer, sr: Float, now: CFTimeInterval) {
-        guard wantBars, let setup = fftSetup, let ch = buf.floatChannelData else { return }
+    /// Called from the audio thread: keeps the last 2048 mono samples.
+    private func feedRing(_ buf: AVAudioPCMBuffer, sr: Float) {
+        guard wantBars, let ch = buf.floatChannelData else { return }
         let n = Int(buf.frameLength)
         let chs = Int(buf.format.channelCount)
         let take = min(n, fftN)
+        lastSR = sr
+        ringLock.lock()
         ring.withUnsafeMutableBufferPointer { r in
             if take < fftN { memmove(r.baseAddress!, r.baseAddress! + take, (fftN - take) * MemoryLayout<Float>.size) }
             for k in 0..<take {
@@ -147,7 +156,26 @@ final class Analyzer {
                 r[fftN - take + k] = v
             }
         }
-        guard now - lastBars > 1.0 / 32 else { return }
+        ringLock.unlock()
+    }
+
+    private func restartTimer() {
+        vizTimer?.cancel()
+        vizTimer = nil
+        guard wantBars else { return }
+        let t = DispatchSource.makeTimerSource(queue: vizQueue)
+        t.schedule(deadline: .now(), repeating: 1.0 / max(1, vizFPS), leeway: .milliseconds(1))
+        t.setEventHandler { [weak self] in self?.computeBars() }
+        t.resume()
+        vizTimer = t
+    }
+
+    /// Runs on the viz timer at the user-chosen refresh rate (1...60 Hz).
+    private func computeBars() {
+        guard let setup = fftSetup else { return }
+        let sr = lastSR
+        let now = CACurrentMediaTime()
+        let dt = Float(min(1, max(0.001, now - lastBars)))
         lastBars = now
 
         if edges.count != barCount + 1 {
@@ -164,7 +192,10 @@ final class Analyzer {
             bars = [Float](repeating: 0, count: barCount)
         }
 
-        vDSP_vmul(ring, 1, window, 1, &windowed, 1, vDSP_Length(fftN))
+        ringLock.lock()
+        snapshot = ring
+        ringLock.unlock()
+        vDSP_vmul(snapshot, 1, window, 1, &windowed, 1, vDSP_Length(fftN))
         windowed.withUnsafeBufferPointer { wp in
             realp.withUnsafeMutableBufferPointer { rp in
                 imagp.withUnsafeMutableBufferPointer { ip in
@@ -177,6 +208,8 @@ final class Analyzer {
                 }
             }
         }
+        // smoothing is time-based so the motion looks the same at any refresh rate
+        let ka = powf(0.35, dt * 32), kd = powf(0.88, dt * 32)
         for b in 0..<barCount {
             var m: Float = 0
             let a = edges[b], z = max(edges[b + 1], a + 1)
@@ -185,7 +218,7 @@ final class Analyzer {
             let db = 20 * log10(amp + 1e-7)
             let tilt = Float(b) / Float(barCount) * 12
             let v = min(1, max(0, (db + 68 + tilt) / 58) * vizGain)
-            bars[b] = v > bars[b] ? bars[b] * 0.35 + v * 0.65 : bars[b] * 0.88 + v * 0.12
+            bars[b] = v > bars[b] ? bars[b] * ka + v * (1 - ka) : bars[b] * kd + v * (1 - kd)
         }
         publishBars?(bars)
     }
@@ -194,7 +227,8 @@ final class Analyzer {
         guard let ch = buf.floatChannelData, buf.frameLength > 0 else { return }
         let n = Int(buf.frameLength)
         let sr = Float(buf.format.sampleRate)
-        spectrum(buf, sr: sr, now: CACurrentMediaTime())
+        feedRing(buf, sr: sr)
+        let k = Float(n) / sr / 0.0232   // frames relative to the original 1024 @ 44.1 kHz
         let a = 1 - exp(-2 * Float.pi * cutoff / sr)
         let x0 = ch[0]
         var full: Float = 0, low: Float = 0
@@ -206,7 +240,7 @@ final class Analyzer {
         }
         full = sqrt(full / Float(n))
         low = sqrt(low / Float(n))
-        peak = max(peak * 0.9993, low, 0.03)
+        peak = max(peak * powf(0.9993, k), low, 0.03)
         let norm = min(1, low / peak)
         let now = CACurrentMediaTime()
         if enabled {
@@ -216,7 +250,8 @@ final class Analyzer {
                 haptics.pulse(min(1, (0.5 + norm * 0.5) * strength))
             }
         }
-        avg = avg * 0.88 + low * 0.12
+        let aK = powf(0.88, k)
+        avg = avg * aK + low * (1 - aK)
         if now - lastPublish > 0.05 {
             lastPublish = now
             publish?(min(1, full * 2.5), norm)
@@ -225,5 +260,5 @@ final class Analyzer {
 }
 
 func installTap(on node: AVAudioMixerNode, analyzer: Analyzer) {
-    node.installTap(onBus: 0, bufferSize: 1024, format: nil) { buf, _ in analyzer.process(buf) }
+    node.installTap(onBus: 0, bufferSize: 512, format: nil) { buf, _ in analyzer.process(buf) }
 }

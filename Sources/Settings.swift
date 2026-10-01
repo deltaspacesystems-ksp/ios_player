@@ -42,6 +42,7 @@ struct Settings: Codable, Equatable {
     var vizBars = 32
     var vizHeight = 70.0
     var vizGain = 1.0
+    var vizFPS = 30.0
     // AI DJ (offline)
     var djVoice = true
     var djLang = Locale.current.language.languageCode?.identifier == "pl" ? "pl" : "en"
