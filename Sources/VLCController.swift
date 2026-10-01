@@ -423,7 +423,7 @@ final class VLCController: NSObject, ObservableObject, VLCMediaPlayerDelegate, V
             show("A point set")
         case 1:
             abB = timeMs
-            if abB > abA + 500, player.setABLoopFromTime(VLCTime(int: Int32(abA)), toTime: VLCTime(int: Int32(abB))) {
+            if abB > abA + 500, player.setABLoopFrom(VLCTime(int: Int32(abA)), to: VLCTime(int: Int32(abB))) {
                 abState = 2
                 show("A–B repeat on")
             } else {
