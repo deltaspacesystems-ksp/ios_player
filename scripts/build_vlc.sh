@@ -16,6 +16,13 @@ xcodebuild -version
 pod --version || true
 ruby -v
 
+echo "== rebrand + inject Lumen"
+sed -i '' 's/^BUNDLE_IDENTIFIER_PREFIX=.*/BUNDLE_IDENTIFIER_PREFIX=dev.lumen/' Buildsystem/SharedConfig.xcconfig
+cp -R "$ROOT/LumenKit" "$WORK/LumenKit"
+which ruby gem pod
+gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --no-document --user-install
+ruby "$ROOT/scripts/patch_vlc.rb" "$WORK"
+
 echo "== pod install"
 pod install
 
@@ -27,6 +34,13 @@ xcodebuild -workspace VLC.xcworkspace -scheme VLC-iOS-no-watch -configuration Re
 echo "== package"
 APP=$(find "$ROOT/build/Build/Products" -maxdepth 2 -name "*.app" | head -1)
 echo "app: $APP"
+echo "== rebrand app"
+PB=/usr/libexec/PlistBuddy
+$PB -c "Set :CFBundleIdentifier dev.lumen.player" "$APP/Info.plist"
+$PB -c "Set :CFBundleDisplayName Lumen" "$APP/Info.plist"
+$PB -c "Set :CFBundleName Lumen" "$APP/Info.plist"
+$PB -c "Add :NSMicrophoneUsageDescription string Lumen listens through the microphone only when you ask it to identify a song with Shazam." "$APP/Info.plist" || true
+rm -rf "$APP/PlugIns"
 cd "$ROOT"
 rm -rf Payload Lumen-VLC.ipa
 mkdir Payload
