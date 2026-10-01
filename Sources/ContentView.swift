@@ -5,15 +5,17 @@ struct ContentView: View {
     @EnvironmentObject var player: Player
     @EnvironmentObject var shazam: ShazamService
     @EnvironmentObject var library: Library
+    @AppStorage("lumen.tab") private var tab = 0
     @State private var showNow = false
     @State private var videoTrack: Track?
 
     var body: some View {
-        TabView {
-            Tab("Songs", systemImage: "music.note") { SongsView() }
-            Tab("Mixes", systemImage: "rectangle.3.group") { MixesView() }
-            Tab("Videos", systemImage: "play.rectangle.fill") { VideosView(videoTrack: $videoTrack) }
-            Tab("Settings", systemImage: "slider.horizontal.3") { SettingsView() }
+        TabView(selection: $tab) {
+            Tab("Video", systemImage: "film", value: 0) { VideoTab(videoTrack: $videoTrack) }
+            Tab("Audio", systemImage: "music.note", value: 1) { AudioTab() }
+            Tab("Playlists", systemImage: "music.note.list", value: 2) { PlaylistsTab() }
+            Tab("Network", systemImage: "network", value: 3) { NetworkTab() }
+            Tab("Settings", systemImage: "gearshape", value: 4) { SettingsView() }
         }
         .tint(player.cfg.accent)
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -36,6 +38,7 @@ struct ContentView: View {
         .task { await library.reload() }
         .onAppear { applyWindowTint() }
         .onChange(of: player.cfg.accentHex) { applyWindowTint() }
+        .onChange(of: player.cfg.useCustomAccent) { applyWindowTint() }
     }
 
     private func useVLC(for t: Track) -> Bool {
@@ -66,7 +69,7 @@ struct ImportButton: View {
             Button("Import Files…", systemImage: "doc.badge.plus") { pickFolder = false; show = true }
             Button("Add Folder…", systemImage: "folder.badge.plus") { pickFolder = true; show = true }
         } label: { Image(systemName: "plus") }
-        .fileImporter(isPresented: $show, allowedContentTypes: pickFolder ? [.folder] : [.audio, .movie],
+        .fileImporter(isPresented: $show, allowedContentTypes: pickFolder ? [.folder] : [.audio, .movie, .item],
                       allowsMultipleSelection: !pickFolder) { r in
             guard case .success(let urls) = r else { return }
             if pickFolder { if let f = urls.first { Task { await library.addFolder(f) } } }
@@ -86,7 +89,7 @@ struct ArtworkView: View {
                 if let image {
                     Image(uiImage: image).resizable().scaledToFill()
                 } else {
-                    LinearGradient(colors: [Color.accentColor, .purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(colors: [Color.accentColor, Color.accentColor.opacity(0.55)], startPoint: .topLeading, endPoint: .bottomTrailing)
                         .overlay { Image(systemName: "music.note").font(.title).foregroundStyle(.white.opacity(0.85)) }
                 }
             }
@@ -130,150 +133,52 @@ struct Scrubber: View {
     }
 }
 
-// MARK: - Songs
-
-struct SongsView: View {
-    @EnvironmentObject var player: Player
-    @EnvironmentObject var shazam: ShazamService
-    @EnvironmentObject var library: Library
-    @State private var query = ""
-    @State private var vlcAudioTrack: Track?
-
-    private var items: [Track] {
-        query.isEmpty ? library.audio : library.audio.filter {
-            $0.title.localizedCaseInsensitiveContains(query) || $0.artist.localizedCaseInsensitiveContains(query)
-        }
-    }
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if library.audio.isEmpty && library.vlcAudio.isEmpty {
-                    ContentUnavailableView("No music yet", systemImage: "music.note.list",
-                        description: Text("Tap + to import files or add a folder (iCloud Drive / On My iPhone) that Lumen keeps scanning."))
-                } else {
-                    List {
-                        Section {
-                            HStack(spacing: 12) {
-                                Button { player.setQueue(items, start: 0, shuffled: false) } label: {
-                                    Label("Play", systemImage: "play.fill")
-                                        .frame(maxWidth: .infinity, minHeight: 50)
-                                        .foregroundStyle(.white)
-                                        .background(player.cfg.accent, in: Capsule())
-                                }
-                                Button { player.setQueue(items, start: Int.random(in: 0..<items.count), shuffled: true) } label: {
-                                    Label("Shuffle", systemImage: "shuffle")
-                                        .frame(maxWidth: .infinity, minHeight: 50)
-                                        .foregroundStyle(player.cfg.accent)
-                                        .background(player.cfg.accent.opacity(0.18), in: Capsule())
-                                }
-                                Button { player.startDJ(pool: library.audio) } label: {
-                                    Label("DJ", systemImage: "sparkles")
-                                        .frame(maxWidth: .infinity, minHeight: 50)
-                                        .foregroundStyle(player.cfg.accent)
-                                        .background(player.cfg.accent.opacity(0.18), in: Capsule())
-                                }
-                            }
-                            .buttonStyle(.plain)
-                            .font(.body.weight(.semibold))
-                            .disabled(items.isEmpty)
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
-                        }
-                        Section {
-                            ForEach(items) { t in
-                                Button {
-                                    if let i = items.firstIndex(of: t) { player.setQueue(items, start: i) }
-                                } label: { TrackRow(track: t, playing: player.current == t) }
-                                .buttonStyle(.plain)
-                                .alignmentGuide(.listRowSeparatorLeading) { $0[.leading] }
-                                .contextMenu {
-                                    Button("Start DJ from here", systemImage: "sparkles") { player.startDJ(pool: library.audio, from: t) }
-                                    Button("Identify with Shazam", systemImage: "shazam.logo") { Task { await shazam.identify(t, from: nil, presenter: .list) } }
-                                    Button("Play Next", systemImage: "text.insert") { player.playNext(t) }
-                                    Button("Add to Queue", systemImage: "text.append") { player.enqueue(t) }
-                                    if library.canDelete(t) { Button("Delete", systemImage: "trash", role: .destructive) { library.delete(t) } }
-                                }
-                            }
-                        }
-                        if !library.vlcAudio.isEmpty {
-                            Section("Other formats (played by VLC)") {
-                                ForEach(library.vlcAudio) { t in
-                                    Button { vlcAudioTrack = t } label: { TrackRow(track: t, playing: false) }
-                                        .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                    }
-                    .listStyle(.plain)
-                }
-            }
-            .navigationTitle("Songs")
-            .searchable(text: $query)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { ImportButton() } }
-            .fullScreenCover(item: $vlcAudioTrack) { t in
-                VLCPlayerScreen(items: library.vlcAudio.map { VLCItem(url: $0.url, title: $0.title) },
-                                start: library.vlcAudio.firstIndex(of: t) ?? 0, cfg: player.cfg)
-            }
-        }
-    }
-}
-
 struct TrackRow: View {
     let track: Track
     var playing: Bool
+    var showMenu = false
+    @EnvironmentObject var player: Player
+    @EnvironmentObject var library: Library
+    @EnvironmentObject var shazam: ShazamService
+    @EnvironmentObject var playlists: PlaylistStore
+
     var body: some View {
         HStack(spacing: 12) {
             ThumbView(id: track.id, radius: 8).frame(width: 50, height: 50)
             VStack(alignment: .leading, spacing: 2) {
                 Text(track.title).font(.body).lineLimit(1).foregroundStyle(playing ? Color.accentColor : .primary)
-                Text(track.artist.isEmpty ? "Unknown artist" : track.artist)
-                    .font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
+                Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer()
             if playing { Image(systemName: "waveform").symbolEffect(.variableColor.iterative).foregroundStyle(Color.accentColor) }
             Text(formatTime(track.duration)).font(.caption).monospacedDigit().foregroundStyle(.secondary)
+            if showMenu {
+                Menu {
+                    Button("Play Next", systemImage: "text.insert") { player.playNext(track) }
+                    Button("Add to Queue", systemImage: "text.append") { player.enqueue(track) }
+                    Menu("Add to Playlist", systemImage: "text.badge.plus") {
+                        ForEach(playlists.playlists) { p in Button(p.name) { playlists.add(track, to: p.id) } }
+                        Button("New playlist…", systemImage: "plus") { playlists.create(name: track.title, with: track) }
+                    }
+                    Divider()
+                    Button("Start DJ from here", systemImage: "sparkles") { player.startDJ(pool: library.audio, from: track) }
+                    Button("Identify with Shazam", systemImage: "shazam.logo") { Task { await shazam.identify(track, from: nil, presenter: .list) } }
+                    if library.canDelete(track) {
+                        Divider()
+                        Button("Delete", systemImage: "trash", role: .destructive) { library.delete(track) }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis").font(.body.weight(.semibold)).foregroundStyle(.secondary)
+                        .frame(width: 32, height: 44).contentShape(Rectangle())
+                }
+            }
         }
         .contentShape(Rectangle())
     }
-}
 
-// MARK: - Videos
-
-struct VideosView: View {
-    @EnvironmentObject var library: Library
-    @Binding var videoTrack: Track?
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                if library.videos.isEmpty {
-                    ContentUnavailableView("No videos yet", systemImage: "film",
-                        description: Text("Import .mp4 / .mov / .m4v files with +."))
-                } else {
-                    List(library.videos) { v in
-                        Button { videoTrack = v } label: {
-                            HStack(spacing: 12) {
-                                Image(systemName: "play.rectangle.fill").font(.title2)
-                                    .frame(width: 50, height: 50)
-                                    .glassEffect(.regular, in: .rect(cornerRadius: 10))
-                                VStack(alignment: .leading) {
-                                    Text(v.title).lineLimit(2)
-                                    Text(formatTime(v.duration)).font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .swipeActions { if library.canDelete(v) { Button("Delete", role: .destructive) { library.delete(v) } } }
-                    }
-                    .listStyle(.plain)
-                }
-            }
-            .navigationTitle("Videos")
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { ImportButton() } }
-        }
+    private var subtitle: String {
+        let a = track.artist.isEmpty ? "Unknown artist" : track.artist
+        return track.album.isEmpty ? a : a + " — " + track.album
     }
 }
 
@@ -313,4 +218,3 @@ struct MiniPlayer: View {
         .sensoryFeedback(.impact(flexibility: .soft), trigger: swipes)
     }
 }
-

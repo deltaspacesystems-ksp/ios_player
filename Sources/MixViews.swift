@@ -8,47 +8,6 @@ private func labeled(_ title: String, _ value: String, _ content: some View) -> 
     }
 }
 
-// MARK: - List of mixes
-
-struct MixesView: View {
-    @EnvironmentObject var store: MixStore
-    @State private var path: [UUID] = []
-
-    var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if store.mixes.isEmpty {
-                    ContentUnavailableView("No mixes yet", systemImage: "rectangle.3.group",
-                        description: Text("Create a mix, arrange tracks and edit every transition. You can also save the current queue as a mix."))
-                } else {
-                    List {
-                        ForEach(store.mixes) { m in
-                            NavigationLink(value: m.id) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(m.name)
-                                    Text("\(m.items.count) tracks").font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .onDelete { store.mixes.remove(atOffsets: $0) }
-                    }
-                }
-            }
-            .navigationTitle("Mixes")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        let m = Mix(name: "New mix")
-                        store.mixes.append(m)
-                        path.append(m.id)
-                    } label: { Image(systemName: "plus") }
-                }
-            }
-            .navigationDestination(for: UUID.self) { MixEditorView(mixID: $0) }
-        }
-    }
-}
-
 // MARK: - Editor
 
 struct MixEditorView: View {

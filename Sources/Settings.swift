@@ -84,6 +84,7 @@ struct Settings: Codable, Equatable {
     var pitchCents: Float = 0
     // Appearance
     var accentHex = "FF2D78"
+    var useCustomAccent = false
     var backdrop: BackdropStyle = .mesh
     var pulseArtwork = true
     var pulseAmount = 1.0
@@ -97,7 +98,7 @@ struct Settings: Codable, Equatable {
     var controlsHide = 4.0
     var videoSpeed: Float = 1
 
-    var accent: Color { Color(hex: accentHex) }
+    var accent: Color { useCustomAccent ? Color(hex: accentHex) : vlcOrange }
     var vlcSubColorRGB: UInt32 { UInt32(vlcSubColorHex, radix: 16) ?? 0xFFFFFF }
 
     private static let key = "lumen.settings.v1"

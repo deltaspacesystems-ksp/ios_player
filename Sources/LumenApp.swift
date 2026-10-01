@@ -6,6 +6,8 @@ struct LumenApp: App {
     @StateObject private var library = Library()
     @StateObject private var mixStore = MixStore()
     @StateObject private var shazam = ShazamService()
+    @StateObject private var playlists = PlaylistStore()
+    @StateObject private var network = NetworkStore()
 
     init() { Log.shared.startSession() }
 
@@ -18,6 +20,8 @@ struct LumenApp: App {
                 .environmentObject(player.analysis)
                 .environmentObject(mixStore)
                 .environmentObject(shazam)
+                .environmentObject(playlists)
+                .environmentObject(network)
                 .tint(player.cfg.accent)
                 .onOpenURL { url in Task { await library.importFiles([url]) } }
         }

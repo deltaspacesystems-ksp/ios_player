@@ -167,7 +167,8 @@ struct SettingsView: View {
 
     private var appearance: some View {
         Section("Appearance") {
-            ColorPicker("Accent color", selection: accentBinding, supportsOpacity: false)
+            Toggle("Custom accent color (default: VLC orange)", isOn: $player.cfg.useCustomAccent)
+            if player.cfg.useCustomAccent { ColorPicker("Accent color", selection: accentBinding, supportsOpacity: false) }
             Picker("Now Playing background", selection: $player.cfg.backdrop) {
                 ForEach(BackdropStyle.allCases) { Text($0.rawValue).tag($0) }
             }

@@ -22,6 +22,8 @@ struct Track: Identifiable, Equatable {
     var duration: Double
     var isVideo: Bool
     var tintHex: String?
+    var genre = ""
+    var modified = 0.0
 
     var tint: Color {
         if let h = tintHex { return Color(hex: h) }
@@ -43,12 +45,13 @@ struct CachedMeta: Codable {
     var isVideo: Bool
     var tintHex: String?
     var mtime: Double
+    var genre: String?
 }
 
 extension Track {
     init(url: URL, meta m: CachedMeta) {
         self.init(id: url.path, url: url, title: m.title, artist: m.artist, album: m.album,
-                  duration: m.duration, isVideo: m.isVideo, tintHex: m.tintHex)
+                  duration: m.duration, isVideo: m.isVideo, tintHex: m.tintHex, genre: m.genre ?? "", modified: m.mtime)
     }
 
     static func build(_ url: URL, mtime: Double) async -> CachedMeta {
@@ -69,9 +72,21 @@ extension Track {
            let th = img.preparingThumbnail(of: CGSize(width: 160, height: 160)) {
             ThumbStore.write(th, id: url.path)
             tint = th.averageColor.map { Color(uiColor: $0).hexString }
+        } else if r.isVideo {
+            // no embedded cover: grab a frame (Apple frames for MP4/MOV, libvlc for everything else)
+            let ext = url.pathExtension.lowercased()
+            let frame = MediaExt.nativeVideo.contains(ext)
+                ? await VideoThumbs.native(url, duration: r.duration)
+                : await VideoThumbs.vlc(url)
+            if let frame, let th = frame.preparingThumbnail(of: CGSize(width: 480, height: 480)) {
+                ThumbStore.write(th, id: url.path)
+                tint = th.averageColor.map { Color(uiColor: $0).hexString }
+            } else {
+                Log.w("scan", "No thumbnail for \(url.lastPathComponent)")
+            }
         }
         return CachedMeta(title: title, artist: artist, album: r.album ?? "", duration: r.duration,
-                          isVideo: r.isVideo, tintHex: tint, mtime: mtime)
+                          isVideo: r.isVideo, tintHex: tint, mtime: mtime, genre: r.genre)
     }
 }
 
@@ -132,6 +147,7 @@ enum MetaReader {
         var artist: String?
         var album: String?
         var art: Data?
+        var genre: String?
         var duration = 0.0
         var isVideo = false
     }
@@ -147,6 +163,7 @@ enum MetaReader {
                 r.title = md.title
                 r.artist = md.artist
                 r.album = md.album
+                r.genre = md.genre
                 r.duration = Double(m.length.intValue) / 1000
                 if wantArt { r.art = md.artwork?.pngData() }
             } else {
@@ -161,6 +178,7 @@ enum MetaReader {
             r.title = f.title
             r.artist = f.artist
             r.album = f.album
+            r.genre = f.genre
             r.art = f.art
             if r.duration <= 0, let d = f.duration { r.duration = d }
         }
@@ -183,6 +201,7 @@ enum MetaReader {
                 case .commonKeyArtist: kind = "a"
                 case .commonKeyAlbumName: kind = "l"
                 case .commonKeyArtwork: kind = "p"
+                case .commonKeyType: kind = "g"
                 default: break
                 }
             }
@@ -192,6 +211,7 @@ enum MetaReader {
                 case .id3MetadataLeadPerformer, .iTunesMetadataArtist, .id3MetadataBand: kind = "a"
                 case .id3MetadataAlbumTitle, .iTunesMetadataAlbum: kind = "l"
                 case .id3MetadataAttachedPicture, .iTunesMetadataCoverArt: kind = "p"
+                case .id3MetadataContentType, .iTunesMetadataUserGenre: kind = "g"
                 default: break
                 }
             }
@@ -199,6 +219,7 @@ enum MetaReader {
             case "t": if r.title == nil, let v = try? await item.load(.stringValue), !v.isEmpty { r.title = v }
             case "a": if r.artist == nil, let v = try? await item.load(.stringValue), !v.isEmpty { r.artist = v }
             case "l": if r.album == nil, let v = try? await item.load(.stringValue), !v.isEmpty { r.album = v }
+            case "g": if r.genre == nil, let v = try? await item.load(.stringValue), !v.isEmpty { r.genre = v }
             case "p": if wantArt, r.art == nil, let d = try? await item.load(.dataValue) { r.art = d }
             default: break
             }
@@ -210,6 +231,7 @@ enum MetaReader {
         var artist: String?
         var album: String?
         var art: Data?
+        var genre: String?
         var duration: Double?
     }
 
@@ -268,6 +290,7 @@ enum MetaReader {
                     case "ARTIST": m.artist = val
                     case "ALBUMARTIST": if m.artist == nil { m.artist = val }
                     case "ALBUM": if m.album == nil { m.album = val }
+                    case "GENRE": if m.genre == nil { m.genre = val }
                     default: break
                     }
                 }
@@ -376,7 +399,7 @@ final class Library: ObservableObject {
     // MARK: Scanning (cached by path + modification time)
 
     nonisolated private static var cacheURL: URL {
-        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("lumen-meta.json")
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("lumen-meta-v2.json")
     }
 
     nonisolated private static func loadCache() -> [String: CachedMeta] {
