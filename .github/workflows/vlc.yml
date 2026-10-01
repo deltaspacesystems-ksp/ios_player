@@ -33,5 +33,7 @@ jobs:
           echo "sha=${GITHUB_SHA}" >> status.txt
           grep -E "error:|BUILD (FAILED|SUCCEEDED)|\[!\]|fatal:|ERROR|Could not|failed" "$GITHUB_WORKSPACE/build.log" | sort -u | head -150 > errors.txt || true
           tail -n 120 "$GITHUB_WORKSPACE/build.log" > tail.txt || true
+          head -n 160 "$GITHUB_WORKSPACE/build.log" > head.txt || true
+          grep -n "Lumen" "$GITHUB_WORKSPACE/build.log" | cut -c1-300 | head -80 > lumen.txt || true
           git add -A; git commit -q -m "report ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" build-logs-vlc

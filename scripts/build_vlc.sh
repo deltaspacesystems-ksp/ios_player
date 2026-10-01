@@ -22,6 +22,7 @@ cp -R "$ROOT/LumenKit" "$WORK/LumenKit"
 which ruby gem pod
 gem list -i xcodeproj >/dev/null 2>&1 || gem install xcodeproj --no-document --user-install
 ruby "$ROOT/scripts/patch_vlc.rb" "$WORK"
+xcodebuild -list -project VLC.xcodeproj | head -40
 
 echo "== pod install"
 pod install
