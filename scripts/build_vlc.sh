@@ -41,11 +41,14 @@ $PB -c "Set :CFBundleIdentifier dev.lumen.player" "$APP/Info.plist"
 $PB -c "Set :CFBundleDisplayName Lumen" "$APP/Info.plist"
 $PB -c "Set :CFBundleName Lumen" "$APP/Info.plist"
 $PB -c "Add :NSMicrophoneUsageDescription string Lumen listens through the microphone only when you ask it to identify a song with Shazam." "$APP/Info.plist" || true
-rm -rf "$APP/PlugIns"
 cd "$ROOT"
 rm -rf Payload Lumen-VLC.ipa
 mkdir Payload
 cp -R "$APP" Payload/
 zip -qr Lumen-VLC.ipa Payload
-ls -la Lumen-VLC.ipa
+# lighter variant without app extensions (share extension, widget) for sideload App ID limits
+rm -rf Payload-lite && mkdir Payload-lite && cp -R "$APP" Payload-lite/
+rm -rf Payload-lite/*.app/PlugIns
+mv Payload-lite Payload-tmp && mkdir Payload-lite && mv Payload-tmp Payload-lite/Payload && (cd Payload-lite && zip -qr ../Lumen-VLC-noext.ipa Payload)
+ls -la Lumen-VLC.ipa Lumen-VLC-noext.ipa
 echo "** BUILD SUCCEEDED **"

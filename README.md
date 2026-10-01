@@ -25,3 +25,15 @@ If `macos-26` is not available for your account, change `runs-on` in `.github/wo
 - SideStore source: `https://github.com/deltaspacesystems-ksp/ios_player/releases/download/latest/source.json`
 - LiveContainer: install `Lumen.ipa` from the latest release (unsigned IPA, arm64). Files added in-app go to the guest's Documents folder.
   Folder bookmarks may not survive inside LiveContainer; Lumen keeps such folders listed (with a warning) so you can re-grant access in Settings.
+
+## Lumen = VLC for iOS 4 + Lumen features (branch `vlc`)
+
+The `vlc` branch builds **VLC for iOS** (upstream, pinned commit in `scripts/build_vlc.sh`) and adds a **Lumen** tab (module `LumenKit/`):
+crossfade / gapless engine, EQ, music haptics, spectrum, offline DJ, mix editor, Shazam, logs.
+Everything VLC has stays as it is.
+
+VLC for iOS is licensed under GPLv2 (or later) and MPLv2 (https://code.videolan.org/videolan/vlc-ios).
+This combined work is distributed under the GPL; its complete source is this repository plus the pinned upstream commit.
+"VLC" and the cone icon are trademarks of VideoLAN — this is an unofficial personal build.
+
+SideStore source: `https://github.com/deltaspacesystems-ksp/ios_player/releases/download/vlc-latest/source.json`

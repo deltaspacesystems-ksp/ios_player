@@ -15,11 +15,30 @@ jobs:
       - name: Build
         id: build
         run: bash scripts/build_vlc.sh 2>&1 | tee build.log
+      - name: Generate SideStore source
+        if: success()
+        run: |
+          REPO="${{ github.repository }}"
+          BASE="https://github.com/${REPO}/releases/download/vlc-latest"
+          SIZE=$(stat -f%z Lumen-VLC.ipa)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          VER="4.0.${{ github.run_number }}"
+          jq -n --arg base "$BASE" --arg icon "https://raw.githubusercontent.com/${REPO}/main/icon.png" --argjson size "$SIZE" --arg date "$DATE" --arg ver "$VER" '{
+            name: "Lumen Source", identifier: "dev.lumen.source",
+            sourceURL: ($base + "/source.json"),
+            apps: [{
+              name: "Lumen", bundleIdentifier: "dev.lumen.player", developerName: "Lumen (VLC for iOS 4 + Lumen)",
+              subtitle: "VLC for iOS, plus crossfade, haptics, DJ and mixes", localizedDescription: "The real VLC for iOS 4 with Lumen features added on top.",
+              iconURL: $icon, tintColor: "FF8800",
+              downloadURL: ($base + "/Lumen-VLC.ipa"), size: $size, version: $ver, versionDate: $date,
+              versionDescription: "Automatic build",
+              versions: [{version: $ver, date: $date, size: $size, downloadURL: ($base + "/Lumen-VLC.ipa"), localizedDescription: "Automatic build", minOSVersion: "26.0"}]
+            }], news: []}' > source.json
       - name: Publish IPA release
         if: success()
         run: |
           gh release delete vlc-latest --yes --cleanup-tag || true
-          gh release create vlc-latest Lumen-VLC.ipa --title "Lumen (VLC fork, latest build)" --notes "Commit ${GITHUB_SHA}" --prerelease
+          gh release create vlc-latest Lumen-VLC.ipa Lumen-VLC-noext.ipa source.json --title "Lumen (VLC for iOS 4 + Lumen), latest build" --notes "Commit ${GITHUB_SHA}. Lumen-VLC-noext.ipa = same app without share extension / widget (fewer App IDs)." --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Publish build report
