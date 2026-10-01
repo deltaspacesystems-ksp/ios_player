@@ -10,6 +10,11 @@ kit.build_configurations.each do |c|
   s = c.build_settings
   s['PRODUCT_BUNDLE_IDENTIFIER'] = 'dev.lumen.player.kit'
   s['PRODUCT_NAME'] = 'LumenKit'
+  s['PRODUCT_MODULE_NAME'] = 'LumenKit'
+  s['SWIFT_OBJC_BRIDGING_HEADER'] = ''
+  s['CLANG_ENABLE_MODULES'] = 'YES'
+  s['SWIFT_STRICT_CONCURRENCY'] = 'minimal'
+  s['OTHER_SWIFT_FLAGS'] = ''
   s['SWIFT_VERSION'] = '5.0'
   s['DEFINES_MODULE'] = 'YES'
   s['GENERATE_INFOPLIST_FILE'] = 'YES'
