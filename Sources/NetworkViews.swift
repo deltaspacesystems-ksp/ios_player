@@ -61,7 +61,7 @@ final class NetworkStore: ObservableObject {
     func startDiscovery() {
         guard discoverers.isEmpty else { return }
         scanning = true
-        let list = VLCMediaDiscoverer.availableMediaDiscoverer(forCategoryType: .lan)
+        let list = VLCMediaDiscoverer.availableMediaDiscoverer(for: VLCMediaDiscovererCategoryType(rawValue: 1) ?? VLCMediaDiscovererCategoryType(rawValue: 0)!)
         for entry in list {
             guard let d = entry as? [String: Any], let name = d[VLCMediaDiscovererName] as? String else { continue }
             let disc = VLCMediaDiscoverer(name: name)
@@ -80,7 +80,7 @@ final class NetworkStore: ObservableObject {
     func stopDiscovery() {
         pollTask?.cancel()
         pollTask = nil
-        for d in discoverers { d.stopDiscoverer() }
+        for d in discoverers { d.stop() }
         discoverers.removeAll()
         scanning = false
     }
