@@ -53,10 +53,12 @@ abort 'anchor not found' unless tbc.include?(anchor)
 tbc.sub!(anchor, anchor + <<~SWIFT)
 
         if #available(iOS 26.0, *) {
-            LumenKit.onWillPlay = { PlaybackService.sharedInstance().pause() }
-            let lumen = UINavigationController(rootViewController: LumenKit.makeViewController())
-            lumen.isNavigationBarHidden = true
-            controllers.append(lumen)
+            MainActor.assumeIsolated {
+                LumenKit.onWillPlay = { PlaybackService.sharedInstance().pause() }
+                let lumen = UINavigationController(rootViewController: LumenKit.makeViewController())
+                lumen.isNavigationBarHidden = true
+                controllers.append(lumen)
+            }
         }
 SWIFT
 File.write(tbc_path, tbc)
