@@ -1,0 +1,5 @@
+** BUILD SUCCEEDED **
+/Users/runner/work/ios_player/ios_player/Sources/Shazam.swift:1:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'AVFAudio'
+/Users/runner/work/ios_player/ios_player/Sources/Shazam.swift:166:17: warning: capture of 'inBuf' with non-Sendable type 'AVAudioPCMBuffer' in a '@Sendable' closure
+/Users/runner/work/ios_player/ios_player/Sources/VideoThumbs.swift:3:1: warning: add '@preconcurrency' to suppress 'Sendable'-related warnings from module 'VLCKit'
+/Users/runner/work/ios_player/ios_player/Sources/VideoThumbs.swift:50:52: warning: capture of 'media' with non-Sendable type 'VLCMedia' in a '@Sendable' closure
