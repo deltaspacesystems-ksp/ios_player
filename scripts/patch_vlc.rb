@@ -33,6 +33,7 @@ Dir[File.join(root, 'LumenKit', '*.swift')].sort.each do |f|
   kit.add_file_references([ref])
 end
 
+app.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '26.0' }
 app.add_dependency(kit)
 app.frameworks_build_phase.add_file_reference(kit.product_reference, true)
 embed = app.copy_files_build_phases.find { |p| p.symbol_dst_subfolder_spec == :frameworks }
