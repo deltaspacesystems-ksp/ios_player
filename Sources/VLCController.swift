@@ -268,7 +268,7 @@ final class VLCController: NSObject, ObservableObject, VLCMediaPlayerDelegate, V
     }
 
     func seek(ms: Int) {
-        player.time = VLCTime(int: Int32(max(0, min(ms, max(lengthMs, 0))))
+        player.time = VLCTime(int: Int32(max(0, min(ms, max(lengthMs, 0)))))
         timeMs = max(0, ms)
     }
 
