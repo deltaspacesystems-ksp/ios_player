@@ -10,6 +10,8 @@ permissions:
 jobs:
   build:
     runs-on: macos-26
+    env:
+      WITH_LUMEN: "0"   # 0 = pristine VLC, 1 = VLC + Lumen tab
     steps:
       - uses: actions/checkout@v4
       - name: Build
@@ -20,25 +22,27 @@ jobs:
         run: |
           REPO="${{ github.repository }}"
           BASE="https://github.com/${REPO}/releases/download/vlc-latest"
-          SIZE=$(stat -f%z Lumen-VLC.ipa)
+          if [ "$WITH_LUMEN" = "1" ]; then OUT=Lumen-VLC; BID=dev.lumen.player; NAME=Lumen; SUB="VLC for iOS, plus crossfade, haptics, DJ and mixes"; else OUT=VLC; BID=dev.lumen.vlc; NAME=VLC; SUB="VLC for iOS 4 (unmodified build)"; fi
+          SIZE=$(stat -f%z $OUT.ipa)
           DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           VER="4.0.${{ github.run_number }}"
-          jq -n --arg base "$BASE" --arg icon "https://raw.githubusercontent.com/${REPO}/main/icon.png" --argjson size "$SIZE" --arg date "$DATE" --arg ver "$VER" '{
+          jq -n --arg base "$BASE" --arg icon "https://raw.githubusercontent.com/${REPO}/main/icon.png" --argjson size "$SIZE" --arg date "$DATE" --arg ver "$VER" --arg out "$OUT" --arg bid "$BID" --arg name "$NAME" --arg sub "$SUB" '{
             name: "Lumen Source", identifier: "dev.lumen.source",
             sourceURL: ($base + "/source.json"),
             apps: [{
-              name: "Lumen", bundleIdentifier: "dev.lumen.player", developerName: "Lumen (VLC for iOS 4 + Lumen)",
-              subtitle: "VLC for iOS, plus crossfade, haptics, DJ and mixes", localizedDescription: "The real VLC for iOS 4 with Lumen features added on top.",
+              name: $name, bundleIdentifier: $bid, developerName: "VideoLAN (unofficial build)",
+              subtitle: $sub, localizedDescription: "VLC for iOS 4 built from the official source.",
               iconURL: $icon, tintColor: "FF8800",
-              downloadURL: ($base + "/Lumen-VLC.ipa"), size: $size, version: $ver, versionDate: $date,
+              downloadURL: ($base + "/" + $out + ".ipa"), size: $size, version: $ver, versionDate: $date,
               versionDescription: "Automatic build",
-              versions: [{version: $ver, date: $date, size: $size, downloadURL: ($base + "/Lumen-VLC.ipa"), localizedDescription: "Automatic build", minOSVersion: "26.0"}]
+              versions: [{version: $ver, date: $date, size: $size, downloadURL: ($base + "/" + $out + ".ipa"), localizedDescription: "Automatic build", minOSVersion: "26.0"}]
             }], news: []}' > source.json
       - name: Publish IPA release
         if: success()
         run: |
+          if [ "$WITH_LUMEN" = "1" ]; then OUT=Lumen-VLC; else OUT=VLC; fi
           gh release delete vlc-latest --yes --cleanup-tag || true
-          gh release create vlc-latest Lumen-VLC.ipa Lumen-VLC-noext.ipa source.json --title "Lumen (VLC for iOS 4 + Lumen), latest build" --notes "Commit ${GITHUB_SHA}. Lumen-VLC-noext.ipa = same app without share extension / widget (fewer App IDs)." --prerelease
+          gh release create vlc-latest $OUT.ipa $OUT-noext.ipa source.json --title "$OUT latest build" --notes "Commit ${GITHUB_SHA}. $OUT-noext.ipa = same app without share extension / widget (fewer App IDs)." --prerelease
         env:
           GH_TOKEN: ${{ github.token }}
       - name: Publish build report
