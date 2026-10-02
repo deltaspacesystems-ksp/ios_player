@@ -1,0 +1,120 @@
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ta.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ta.lproj/nlu.appintents/dbc4b9a83f5c8dede62900e290427d25.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sc.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sc.lproj/nlu.appintents/4ebe42c24e0a9a8db8e243f3b4e2b689.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/he.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/he.lproj/nlu.appintents/1abc5382ff72f9efa8247e6d0506be8c.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/si.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/si.lproj/nlu.appintents/3b6da07d481062509a34af8cb43a7670.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/it.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/it.lproj/nlu.appintents/70b5db0c6cc999da030661b9203bde51.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/co.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/co.lproj/nlu.appintents/0415c85d998d081500a617a94241a73e.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/be.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/be.lproj/nlu.appintents/fb167d03828d9e2cc0cb3a81835c1908.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/km.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/km.lproj/nlu.appintents/1e991e53136889573fa749a4d7b838f1.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/en.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/en.lproj/nlu.appintents/da106807413562a4fa1c653ab2d7e006.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sv.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sv.lproj/nlu.appintents/5cfecdd46b839b1e507f2a492a7e01d7.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/nl.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/nl.lproj/nlu.appintents/e6c53eee9e8e831bcd55332e2c37bd4c.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/fo.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/fo.lproj/nlu.appintents/9ee4a6a0dc85a771e97523349b998283.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/is.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/is.lproj/nlu.appintents/c248b81c641c4b295b6f532efce9dd14.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/eu.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/eu.lproj/nlu.appintents/f70db7dd915f221730934017e66e68c2.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/br.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/br.lproj/nlu.appintents/1a25bf631cc448cbb1179e1709f62665.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/en-GB.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/en-GB.lproj/nlu.appintents/308a9ffe80609f650c5e87be89204de9.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ru.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ru.lproj/nlu.appintents/305858893657ba0d868ee32714b0edd5.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/fr.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/fr.lproj/nlu.appintents/7f2916e1cae58ca579c7ebbba4534de8.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/zh-Hans.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/zh-Hans.lproj/nlu.appintents/9778aa876967a6f3a6cf9f9b5dd9f387.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/tr.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/tr.lproj/nlu.appintents/415e5915ba93ae5ea5b9efaace238fbd.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/cs.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/cs.lproj/nlu.appintents/178b8a9b044a2f75c80a3d5f47314b2a.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/id.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/id.lproj/nlu.appintents/9f9a785df4892d032cb638465d9064cf.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/nb.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/nb.lproj/nlu.appintents/7d0b85af35ace7ee6a9b9a1552b7f896.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ja.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ja.lproj/nlu.appintents/59b8c650f46bf40a81ac2d8350e1d78b.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/zh-Hant.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/zh-Hant.lproj/nlu.appintents/09a4ac45bd7b4155062013157ec0b602.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/hu.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/hu.lproj/nlu.appintents/de8464782c986233c0d6e297946c3d7c.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/mr.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/mr.lproj/nlu.appintents/de70166554bd31cf424289f25f63f647.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sk.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sk.lproj/nlu.appintents/686c97a688a1e3f51367b3f2e04d1871.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/bs.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/bs.lproj/nlu.appintents/f744a21343f0ec1905c3eab8971b2c14.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/Base.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/Base.lproj/nlu.appintents/be9196908d6878de4e946eb048d7c803.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ka.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ka.lproj/nlu.appintents/23d401216b7ea7977f78f2b128ba35db.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/af.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/af.lproj/nlu.appintents/4048aa08bbf5001d0dc42b178b32704e.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/pl.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/pl.lproj/nlu.appintents/2e08725f9317aed1ead7eec328f14e65.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/lv.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/lv.lproj/nlu.appintents/feff76a9959e8a52c92dcd2fd5e33419.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/el.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/el.lproj/nlu.appintents/10278d525804cfeddfe3a7e7a9b41059.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sl.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/sl.lproj/nlu.appintents/7de860cdaed2b1add146684f1cdd4178.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ko.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ko.lproj/nlu.appintents/a0b30eadb5fe06241f4a21ae1c93bbcc.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/uk.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/uk.lproj/nlu.appintents/ef9bbc2b51a208afe3bab82d41020b3d.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ro.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ro.lproj/nlu.appintents/0652f4b3b327aa981a7f2b6579a71917.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/gl.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/gl.lproj/nlu.appintents/dc44b54eb565ef6c5f1c44898849be41.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ar.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ar.lproj/nlu.appintents/eaadf97ce604f7be3fe0625ec396e496.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ca.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/ca.lproj/nlu.appintents/71d2d5b1db41b1dc0a54476416af1028.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/de.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/de.lproj/nlu.appintents/48a09dc65714d38f11fbe176b6dc7ba4.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/pt-PT.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/pt-PT.lproj/nlu.appintents/a4eeb0bf2d2df5aada2fbef4c66c4006.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/fa.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/fa.lproj/nlu.appintents/56b98bbbda48637022727dddcdd7c776.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/pt-BR.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/pt-BR.lproj/nlu.appintents/c0db56842bad7584095b8c149cc3420a.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/es-MX.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/es-MX.lproj/nlu.appintents/0c9acfc43945bf6d5e3d9b55119cff72.version
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/es.lproj/nlu.appintents
+/Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app/es.lproj/nlu.appintents/34e17438e0a7d14f87c18a5b77c78283.version
+
+
+RegisterExecutionPolicyException /Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app (in target 'VLC-iOS-no-watch' from project 'VLC')
+    cd /Users/runner/work/ios_player/ios_player/vlc-src
+    builtin-RegisterExecutionPolicyException /Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app
+
+Validate /Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app (in target 'VLC-iOS-no-watch' from project 'VLC')
+    cd /Users/runner/work/ios_player/ios_player/vlc-src
+    builtin-validationUtility /Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app -validate-for-store -shallow-bundle -infoplist-subpath Info.plist
+
+Touch /Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app (in target 'VLC-iOS-no-watch' from project 'VLC')
+    cd /Users/runner/work/ios_player/ios_player/vlc-src
+    /usr/bin/touch -c /Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app
+
+note: Run script build phase 'Generate Localized Strings' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'VLC-iOS-no-watch' from project 'VLC')
+note: Run script build phase 'Run SwiftLint Script' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'VLC-iOS-no-watch' from project 'VLC')
+** BUILD SUCCEEDED **
+
+== package
+app: /Users/runner/work/ios_player/ios_player/build/Build/Products/Release-iphoneos/VLC-iOS-no-watch.app
+== rebrand app
+-rw-r--r--  1 runner  staff  37445271 Oct  2 18:18 VLC-noext.ipa
+-rw-r--r--  1 runner  staff  38652242 Oct  2 18:18 VLC.ipa
+** BUILD SUCCEEDED **

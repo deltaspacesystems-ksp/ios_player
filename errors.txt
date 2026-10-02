@@ -1,0 +1,48 @@
+    export CLANG_WARN_DIRECT_OBJC_ISA_USAGE\=YES_ERROR
+    export CLANG_WARN_OBJC_ROOT_CLASS\=YES_ERROR
+    export GCC_TREAT_WARNINGS_AS_ERRORS\=NO
+    export GCC_WARN_ABOUT_RETURN_TYPE\=YES_ERROR
+    export TREAT_MISSING_SCRIPT_PHASE_OUTPUTS_AS_ERRORS\=NO
+    export VALIDATE_DEVELOPMENT_ASSET_PATHS\=YES_ERROR
+** BUILD SUCCEEDED **
+Could not parse: "Settings" = "Settings"; // plain text key to keep compatibility with InAppSettingsKit's upstream
+Could not parse: // Insert %@ where play-pause-glyph should be placed
+Could not parse: // MARK: - ActionSheet
+Could not parse: // MARK: - AppIntent Strings
+Could not parse: // MARK: - AppShortcut Strings
+Could not parse: // MARK: - Audio App Intent Strings
+Could not parse: // MARK: - AudioMiniPlayer playback controls menu
+Could not parse: // MARK: - Custom Playback Speed
+Could not parse: // MARK: - Custom Setting Value
+Could not parse: // MARK: - Donation
+Could not parse: // MARK: - Download Completion Announcement
+Could not parse: // MARK: - Drag and Drop
+Could not parse: // MARK: - EDIT
+Could not parse: // MARK: - Files.app persistence file
+Could not parse: // MARK: - Local Network
+Could not parse: // MARK: - Local Network Service Names
+Could not parse: // MARK: - Media groups
+Could not parse: // MARK: - Media library corruption
+Could not parse: // MARK: - MediaCollectionViewCell
+Could not parse: // MARK: - MediaMoreOptionsActionSheet
+Could not parse: // MARK: - MediaViewController Swipable Header
+Could not parse: // MARK: - NEW DELETE STRINGS
+Could not parse: // MARK: - Playback keyboard shortcuts
+Could not parse: // MARK: - Player WatchOS
+Could not parse: // MARK: - Podcasts
+Could not parse: // MARK: - Preview labels
+Could not parse: // MARK: - QueueViewController
+Could not parse: // MARK: - Radio App Intent Strings
+Could not parse: // MARK: - Radio Stations WatchOS
+Could not parse: // MARK: - Settings
+Could not parse: // MARK: - Sort
+Could not parse: // MARK: - TitleSelection
+Could not parse: // MARK: - VerticalSliderControl Strings
+Could not parse: // MARK: - Video App Intent Strings
+Could not parse: // MARK: - VideoPlayerControls
+Could not parse: // MARK: - VLCMediaLibraryKit - Sorting Criteria
+Could not parse: // MARK: - VLCNetworkLoginTVViewController
+Could not parse: // Passcode Strings that we need to localize for them
+Could not parse: //MARK - something with folders
+Could not parse: //MARK: - Last played playlist indicator
+Could not parse: //MARK: - Playlist Add Action Status

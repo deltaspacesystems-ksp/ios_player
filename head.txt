@@ -1,0 +1,160 @@
+== clone vlc-ios @ 6e80b7616232f7419a19f1a10f74da539b077f51
+Cloning into '/Users/runner/work/ios_player/ios_player/vlc-src'...
+HEAD is now at 6e80b7616 QueueViewController: reorder with drag and drop
+== versions
+Xcode 26.6
+Build version 17F113
+1.17.0
+ruby 3.4.10 (2026-06-30 revision 2b0b7728dc) +PRISM [arm64-darwin25]
+== rebrand (WITH_LUMEN=0)
+== pod install
+Analyzing dependencies
+Pre-downloading: `ADAL` from `https://code.videolan.org/fkuehne/azure-activedirectory-library-for-objc.git`, commit `348e94df`
+Pre-downloading: `OneDriveSDK` from `https://code.videolan.org/fkuehne/onedrive-sdk-ios.git`, commit `810f82da`
+Pre-downloading: `box-ios-sdk-v2` from `https://github.com/fkuehne/box-ios-sdk-v2.git`, commit `08161e74`
+Adding spec repo `trunk` with CDN `https://cdn.cocoapods.org`
+Downloading dependencies
+Installing ADAL (1.2.10)
+Installing AppAuth (2.1.0)
+Installing AppCheckCore (11.3.1)
+Installing Base32 (1.1.2)
+Installing GTMAppAuth (5.0.0)
+Installing GTMSessionFetcher (3.5.0)
+Installing GoogleAPIClientForREST (4.2.0)
+Installing GoogleSignIn (9.2.0)
+Installing GoogleUtilities (8.1.2)
+Installing ObjectiveDropboxOfficial (7.4.2)
+Installing OneDriveSDK (1.3.0)
+Installing PromisesObjC (2.4.1)
+Installing PromisesSwift (2.4.1)
+Installing RecaptchaInterop (101.0.0)
+Installing box-ios-sdk-v2 (1.2.3)
+Generating Pods project
+Integrating client project
+Pod installation complete! There are 7 dependencies from the Podfile and 15 total pods installed.
+== build
+Command line invocation:
+    /Applications/Xcode_26.6.app/Contents/Developer/usr/bin/xcodebuild -workspace VLC.xcworkspace -scheme VLC-iOS-no-watch -configuration Release -sdk iphoneos -destination generic/platform=iOS -derivedDataPath /Users/runner/work/ios_player/ios_player/build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= build
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+    CODE_SIGNING_REQUIRED = NO
+    SDKROOT = iphoneos26.5
+
+Resolve Package Graph
+
+Fetching from https://code.videolan.org/fkuehne/InAppSettingsKit.git
+
+Fetching from https://code.videolan.org/fkuehne/MetaDataFetcherKit.git
+
+Fetching from https://code.videolan.org/fkuehne/XKKeychain.git
+
+Fetching from https://code.videolan.org/videolan/VLCKit.git
+
+Fetching from https://code.videolan.org/videolan/VLCMediaLibraryKit.git
+
+Fetching from https://github.com/cbpowell/MarqueeLabel.git
+
+Fetching from https://code.videolan.org/fkuehne/AFNetworking.git
+
+Fetching from https://code.videolan.org/fkuehne/OBSlider.git
+
+Fetching from https://code.videolan.org/fkuehne/GRKArrayDiff.git
+
+Fetching from https://code.videolan.org/fkuehne/CocoaHTTPServer.git
+
+Fetching from https://github.com/pcloud/pcloud-sdk-swift.git
+
+Creating working copy of package ‘VLCKit’
+
+Checking out 4.0.0-a24 of package ‘VLCKit’
+
+Creating working copy of package ‘XKKeychain’
+
+Checking out 1.0.3 of package ‘XKKeychain’
+
+Creating working copy of package ‘MetaDataFetcherKit’
+
+Checking out 0.5.3 of package ‘MetaDataFetcherKit’
+
+Creating working copy of package ‘AFNetworking’
+
+Checking out 4.0.2 of package ‘AFNetworking’
+
+Creating working copy of package ‘GRKArrayDiff’
+
+Checking out 1.1.2 of package ‘GRKArrayDiff’
+
+Creating working copy of package ‘OBSlider’
+
+Checking out 1.1.3 of package ‘OBSlider’
+
+Creating working copy of package ‘pcloud-sdk-swift’
+
+Checking out 3.2.3 of package ‘pcloud-sdk-swift’
+
+Creating working copy of package ‘VLCMediaLibraryKit’
+
+Checking out 0.14.0-b9 of package ‘VLCMediaLibraryKit’
+
+Creating working copy of package ‘MarqueeLabel’
+
+Checking out 4.5.3 of package ‘MarqueeLabel’
+
+Creating working copy of package ‘InAppSettingsKit’
+
+Checking out 3.7.1 of package ‘InAppSettingsKit’
+
+Creating working copy of package ‘CocoaHTTPServer’
+
+Checking out 2.4.2 of package ‘CocoaHTTPServer’
+
+
+Resolved source packages:
+  OBSlider: https://code.videolan.org/fkuehne/OBSlider.git @ 1.1.3
+  MarqueeLabel: https://github.com/cbpowell/MarqueeLabel.git @ 4.5.3
+  VLCMediaLibraryKit: https://code.videolan.org/videolan/VLCMediaLibraryKit.git @ 0.14.0-b9
+  PCloudSDKSwift: https://github.com/pcloud/pcloud-sdk-swift.git @ 3.2.3
+  VLCKit: https://code.videolan.org/videolan/VLCKit.git @ 4.0.0-a24
+  GRKArrayDiff: https://code.videolan.org/fkuehne/GRKArrayDiff.git @ 1.1.2
+  InAppSettingsKit: https://code.videolan.org/fkuehne/InAppSettingsKit.git @ 3.7.1
+  MetaDataFetcherKit: https://code.videolan.org/fkuehne/MetaDataFetcherKit.git @ 0.5.3
+  AFNetworking: https://code.videolan.org/fkuehne/AFNetworking.git @ 4.0.2
+  CocoaHTTPServer: https://code.videolan.org/fkuehne/CocoaHTTPServer.git @ 2.4.2
+  XKKeychain: https://code.videolan.org/fkuehne/XKKeychain.git @ 1.0.3
+
+note: Using codesigning identity override: 
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (42 targets)
+    Target 'VLC-iOS-no-watch' in project 'VLC'
+        ➜ Explicit dependency on target 'MediaLibraryWidgetExtension' in project 'VLC'
+        ➜ Explicit dependency on target 'VLC-ShareExtension' in project 'VLC'
+        ➜ Implicit dependency on target 'Pods-VLC-iOS-no-watch' in project 'Pods' via file 'libPods-VLC-iOS-no-watch.a' in build phase 'Link Binary'
+        ➜ Implicit dependency on target 'ADAL' in project 'Pods' via options '-lADAL' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'AppAuth' in project 'Pods' via options '-lAppAuth' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'AppCheckCore' in project 'Pods' via options '-lAppCheckCore' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'Base32' in project 'Pods' via options '-lBase32' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GTMAppAuth' in project 'Pods' via options '-lGTMAppAuth' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GTMSessionFetcher' in project 'Pods' via options '-lGTMSessionFetcher' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleAPIClientForREST' in project 'Pods' via options '-lGoogleAPIClientForREST' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleSignIn' in project 'Pods' via options '-lGoogleSignIn' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'GoogleUtilities' in project 'Pods' via options '-lGoogleUtilities' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'ObjectiveDropboxOfficial' in project 'Pods' via options '-lObjectiveDropboxOfficial' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'OneDriveSDK' in project 'Pods' via options '-lOneDriveSDK' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'PromisesObjC' in project 'Pods' via options '-lPromisesObjC' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'PromisesSwift' in project 'Pods' via options '-lPromisesSwift' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'RecaptchaInterop' in project 'Pods' via options '-lRecaptchaInterop' in build setting 'OTHER_LDFLAGS'
+        ➜ Implicit dependency on target 'box-ios-sdk-v2' in project 'Pods' via options '-lbox-ios-sdk-v2' in build setting 'OTHER_LDFLAGS'
+        ➜ Explicit dependency on target 'VLCMediaLibraryKit' in project 'VLCMediaLibraryKit'
