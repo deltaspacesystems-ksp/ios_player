@@ -56,6 +56,9 @@ public sealed partial class PlayerBar : UserControl
         VolSlider.Value = Svc.Settings.Volume * 100;
         _settingValue = false;
         VolIcon.Glyph = Svc.Settings.Volume <= 0.001 ? "" : "";
+        SpatialBtn.Opacity = Svc.Settings.SpatialMode == "Off" ? 0.55 : 1;
+        if (SpatialBtn.Flyout is MenuFlyout mf)
+            foreach (var it in mf.Items.OfType<RadioMenuFlyoutItem>()) it.IsChecked = (string)it.Tag == Svc.Settings.SpatialMode;
         var s = Svc.Settings.CrossfadeSeconds;
         XfadeText.Text = s < 0.1 ? "Gapless" : $"{s:0.#} s";
     }
@@ -114,6 +117,12 @@ public sealed partial class PlayerBar : UserControl
     {
         Svc.Engine.Repeat = Svc.Engine.Repeat switch { RepeatMode.Off => RepeatMode.All, RepeatMode.All => RepeatMode.One, _ => RepeatMode.Off };
         UpdateState();
+    }
+
+    private void Spatial_Click(object sender, RoutedEventArgs e)
+    {
+        Svc.Settings.SpatialMode = (string)((RadioMenuFlyoutItem)sender).Tag;
+        Svc.SaveSettings();
     }
 
     private void Sleep_Click(object sender, RoutedEventArgs e)

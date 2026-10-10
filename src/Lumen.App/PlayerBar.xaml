@@ -62,6 +62,18 @@
                         <TextBlock x:Name="XfadeText" FontSize="12"/>
                     </StackPanel>
                 </Button>
+                <Button x:Name="SpatialBtn" Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="Spatial audio">
+                    <FontIcon Glyph="&#xE7F6;" FontSize="16"/>
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <RadioMenuFlyoutItem Text="Off" Tag="Off" GroupName="spatial" Click="Spatial_Click"/>
+                            <RadioMenuFlyoutItem Text="Wide" Tag="Wide" GroupName="spatial" Click="Spatial_Click"/>
+                            <RadioMenuFlyoutItem Text="Surround" Tag="Surround" GroupName="spatial" Click="Spatial_Click"/>
+                            <RadioMenuFlyoutItem Text="Hall" Tag="Hall" GroupName="spatial" Click="Spatial_Click"/>
+                            <RadioMenuFlyoutItem Text="Spatial 3D" Tag="Spatial3D" GroupName="spatial" Click="Spatial_Click"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
                 <Button x:Name="SleepBtn" Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="Sleep timer">
                     <FontIcon Glyph="&#xE708;" FontSize="16"/>
                     <Button.Flyout>

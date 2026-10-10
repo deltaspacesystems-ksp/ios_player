@@ -121,6 +121,15 @@ public sealed partial class SettingsPage : Page
         _root.Children.Add(eqPanel);
         _root.Children.Add(SliderRow("Preamp", -12, 12, 0.5, s.Preamp, v => $"{v:+0.0;-0.0;0.0} dB", v => s.Preamp = (float)v));
 
+        // ---------------- spatial audio
+        _root.Children.Add(Header("Spatial audio"));
+        _root.Children.Add(ComboRow("Mode", new[] { "Off", "Wide", "Surround", "Hall", "Spatial3D" }, s.SpatialMode, v => s.SpatialMode = v));
+        _root.Children.Add(Note("Wide = stereo width · Surround = cinema-style rear field · Hall = concert-hall reverb · Spatial3D = virtual speakers around you (best on headphones)."));
+        _root.Children.Add(SliderRow("Amount", 0, 1, 0.05, s.SpatialAmount, v => $"{v * 100:0}%", v => s.SpatialAmount = (float)v));
+        _root.Children.Add(SliderRow("Width", 0, 2, 0.05, s.SpatialWidth, v => $"{v:0.00}×", v => s.SpatialWidth = (float)v));
+        _root.Children.Add(SliderRow("Room size", 0, 1, 0.05, s.SpatialRoom, v => $"{v * 100:0}%", v => s.SpatialRoom = (float)v));
+        _root.Children.Add(ToggleRow("Headphone crossfeed", s.Crossfeed, v => s.Crossfeed = v, "Mixes a softened copy of each channel into the other ear, like listening to speakers."));
+
         // ---------------- lyrics
         _root.Children.Add(Header("Lyrics"));
         _root.Children.Add(ToggleRow("Fetch lyrics online (LRCLIB)", s.LyricsOnline, v => s.LyricsOnline = v, "Free, no account. Synced lyrics are cached next to the app data."));

@@ -43,6 +43,7 @@ public sealed class Mixer : ISampleProvider
     public WaveFormat WaveFormat { get; } = WaveFormat.CreateIeeeFloatWaveFormat(Deck.Rate, Deck.Channels);
     public volatile bool Playing;
     public float Volume { get; set; } = 1f;
+    public SpatialFx Spatial { get; } = new();
 
     /// <summary>Raised when a different deck becomes the active one (gapless hand-over or finished crossfade).</summary>
     public event Action<Deck>? Advanced;
@@ -250,6 +251,7 @@ public sealed class Mixer : ISampleProvider
                 buffer[idx] = s;
             }
         }
+        Spatial.Process(buffer, frames);
         // spectrum tap sits BEFORE the master volume so the visualizer does not shrink with the volume slider
         lock (_tapLock)
         {

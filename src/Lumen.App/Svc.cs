@@ -64,6 +64,9 @@ public static class Svc
         e.UseReplayGain = Settings.UseReplayGain;
         Engine.SetVolume(Settings.Volume);
         Engine.Mixer.SetEq(Settings.EqGains, Settings.Preamp);
+        var sp = Engine.Mixer.Spatial;
+        sp.Amount = Settings.SpatialAmount; sp.Width = Settings.SpatialWidth; sp.Room = Settings.SpatialRoom; sp.Crossfeed = Settings.Crossfeed;
+        sp.Mode = Enum.TryParse<SpatialMode>(Settings.SpatialMode, out var sm) ? sm : SpatialMode.Off;
         Log.Min = Enum.TryParse<Lumen.Core.LogLevel>(Settings.LogLevel, out var lv) ? lv : Lumen.Core.LogLevel.Info;
         SettingsChanged?.Invoke();
     }

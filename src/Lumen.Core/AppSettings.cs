@@ -17,6 +17,12 @@ public sealed class AppSettings
     // equalizer
     public float[] EqGains { get; set; } = new float[10];
     public float Preamp { get; set; }
+    // spatial audio
+    public string SpatialMode { get; set; } = "Off";      // Off | Wide | Surround | Hall | Spatial3D
+    public float SpatialAmount { get; set; } = 0.6f;
+    public float SpatialWidth { get; set; } = 1.4f;
+    public float SpatialRoom { get; set; } = 0.6f;
+    public bool Crossfeed { get; set; }
     // lyrics
     public bool LyricsOnline { get; set; } = true;
     public double LyricsFontScale { get; set; } = 1.0;
