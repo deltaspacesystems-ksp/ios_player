@@ -24,6 +24,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           dotnet publish src/Lumen.App -c Release -r win-x64 --self-contained true -o publish -nologo 2>&1 | Tee-Object -FilePath build.log -Append
           if ($LASTEXITCODE -ne 0) { exit 1 }
+          foreach ($need in 'MainWindow.xbf','Lumen.pri','avcodec-63.dll','Lumen.exe') { if (-not (Test-Path "publish/$need")) { "MISSING in publish: $need" | Tee-Object -FilePath build.log -Append; exit 1 } }
           Compress-Archive -Path publish\* -DestinationPath Lumen-win-x64.zip -CompressionLevel Optimal
           "zip: " + [math]::Round((Get-Item Lumen-win-x64.zip).Length / 1MB) + " MB" | Tee-Object -FilePath build.log -Append
       - name: Publish release

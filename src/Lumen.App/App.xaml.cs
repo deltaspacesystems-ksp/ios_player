@@ -38,10 +38,18 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        Svc.Init(DispatcherQueue.GetForCurrentThread());
-        Window = new MainWindow();
-        Window.Activate();
-        _media = new SystemMedia();
-        ApplyCommandLine(Environment.GetCommandLineArgs());
+        try
+        {
+            Svc.Init(DispatcherQueue.GetForCurrentThread());
+            Window = new MainWindow();
+            Window.Activate();
+            _media = new SystemMedia();
+            ApplyCommandLine(Environment.GetCommandLineArgs());
+        }
+        catch (Exception e)
+        {
+            Program.Fail(e);
+            Environment.Exit(1);
+        }
     }
 }

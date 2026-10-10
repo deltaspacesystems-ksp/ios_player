@@ -15,6 +15,7 @@
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\lumen.ico</ApplicationIcon>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
@@ -30,4 +31,11 @@
     <!-- FFmpeg shared libraries (downloaded into native/ffmpeg by scripts/get-ffmpeg.ps1 or CI) -->
     <None Include="..\..\native\ffmpeg\*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Condition="Exists('..\..\native\ffmpeg')" />
   </ItemGroup>
+  <!-- `dotnet publish` of an unpackaged WinUI 3 app forgets the compiled XAML (*.xbf) and the resource index; without them the window cannot load. -->
+  <Target Name="IncludeXamlResourcesInPublish" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <_XamlOut Include="$(OutDir)*.xbf;$(OutDir)$(AssemblyName).pri" />
+      <ResolvedFileToPublish Include="@(_XamlOut)" RelativePath="%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 </Project>

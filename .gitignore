@@ -5,4 +5,4 @@ obj/
 native/ffmpeg/
 *.log
 testdata/
-publish/
+publish*/
