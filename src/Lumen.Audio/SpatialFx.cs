@@ -1,9 +1,10 @@
 namespace Lumen.Audio;
 
-public enum SpatialMode { Off, Wide, Surround, Hall, Spatial3D }
+public enum SpatialMode { Off, Stage, Wide, Surround, Hall, Spatial3D }
 
 /// <summary>
 /// Stereo → "surround" processing for 48 kHz interleaved float audio:
+/// Stage (speaker-friendly width: bass and centre untouched, highs widened, decorrelated air that stays mono-compatible),
 /// Wide (mid/side width), Surround (Pro-Logic style decorrelated rear + early reflections),
 /// Hall (Freeverb-style room), Spatial3D (binaural virtual speakers with head-shadow and inter-aural delay),
 /// plus an optional headphone crossfeed.
@@ -34,6 +35,26 @@ public sealed class SpatialFx
         public LowPass(float fc) { _a = 1 - MathF.Exp(-2 * MathF.PI * fc / Rate); }
         public float Run(float x) { _y += _a * (x - _y); return _y; }
         public void Reset() => _y = 0;
+    }
+
+    /// <summary>2nd-order Butterworth high-pass (RBJ biquad), steep enough to keep bass out of the "air" path.</summary>
+    private sealed class HighPass2
+    {
+        private readonly float _b0, _b1, _b2, _a1, _a2;
+        private float _x1, _x2, _y1, _y2;
+        public HighPass2(float fc)
+        {
+            double w0 = 2 * Math.PI * fc / Rate, cos = Math.Cos(w0), alpha = Math.Sin(w0) / (2 * 0.70710678);
+            double a0 = 1 + alpha;
+            _b0 = (float)((1 + cos) / 2 / a0); _b1 = (float)(-(1 + cos) / a0); _b2 = _b0;
+            _a1 = (float)(-2 * cos / a0); _a2 = (float)((1 - alpha) / a0);
+        }
+        public float Run(float x)
+        {
+            float y = _b0 * x + _b1 * _x1 + _b2 * _x2 - _a1 * _y1 - _a2 * _y2;
+            _x2 = _x1; _x1 = x; _y2 = _y1; _y1 = y;
+            return y;
+        }
     }
 
     private sealed class AllPass
@@ -93,6 +114,13 @@ public sealed class SpatialFx
     private readonly Reverb _hall = new();
     private readonly AllPass[] _decor = { new(113, 0.6f), new(211, 0.6f), new(331, 0.6f) };
 
+    // stage
+    private readonly LowPass _stSideLp = new(380), _stAirLp = new(9000);
+    private readonly HighPass2 _stMidHp = new(750);
+    private readonly AllPass[] _stDecor = { new(137, 0.55f), new(229, 0.55f), new(353, 0.5f), new(487, 0.5f) };
+    private readonly AllPass[] _stDecorSide = { new(173, 0.5f), new(283, 0.5f) };
+    private readonly Delay _stEr = new(Rate / 20);
+
     // spatial 3D
     private readonly Delay _dlL = new(64), _dlR = new(64), _dsL = new(64), _dsR = new(64);
     private readonly LowPass _shadowFrontL = new(3200), _shadowFrontR = new(3200), _shadowRearL = new(2400), _shadowRearR = new(2400);
@@ -122,6 +150,31 @@ public sealed class SpatialFx
 
             switch (mode)
             {
+                case SpatialMode.Stage:
+                {
+                    // 1) mid/side; the low part of the side signal is kept narrow so bass stays solid and centred
+                    float m = (l + r) * 0.5f, s = (l - r) * 0.5f;
+                    float sLo = _stSideLp.Run(s), sHi = s - sLo;
+                    float w = 1 + (width - 1) * a;                                  // width target blended by Amount
+                    float side = sLo * (1 - 0.6f * a) + sHi * w;
+                    // 2) "air": a decorrelated copy of the side highs gives extra depth without changing the mono sum
+                    float dec = sHi;
+                    for (int k = 0; k < _stDecorSide.Length; k++) dec = _stDecorSide[k].Run(dec);
+                    side += dec * 0.30f * a;
+                    // 3) pseudo-stereo for near-mono material: decorrelated mid highs injected as side (cancels in mono)
+                    float mHi = _stMidHp.Run(m);
+                    float pm = mHi;
+                    for (int k = 0; k < _stDecor.Length; k++) pm = _stDecor[k].Run(pm);
+                    side += _stAirLp.Run(pm) * 0.26f * a;
+                    // 4) a few quiet, symmetric early reflections of the mid for a sense of room
+                    _stEr.Write(m);
+                    float er = (_stEr.Read((int)(0.011 * Rate)) * 0.15f + _stEr.Read((int)(0.019 * Rate)) * 0.10f + _stEr.Read((int)(0.031 * Rate)) * 0.07f) * a * (0.4f + 0.6f * room);
+                    // 5) keep loudness constant: the wider we go the more energy the side adds
+                    float comp = 1f / MathF.Sqrt(1 + 0.10f * a * (w * w - 1) + 0.05f * a);
+                    l = (m + er + side) * comp;
+                    r = (m + er - side) * comp;
+                    break;
+                }
                 case SpatialMode.Wide:
                 {
                     float m = (l + r) * 0.5f;

@@ -67,6 +67,7 @@
                     <Button.Flyout>
                         <MenuFlyout>
                             <RadioMenuFlyoutItem Text="Off" Tag="Off" GroupName="spatial" Click="Spatial_Click"/>
+                            <RadioMenuFlyoutItem Text="Stage (speakers &amp; headphones)" Tag="Stage" GroupName="spatial" Click="Spatial_Click"/>
                             <RadioMenuFlyoutItem Text="Wide" Tag="Wide" GroupName="spatial" Click="Spatial_Click"/>
                             <RadioMenuFlyoutItem Text="Surround" Tag="Surround" GroupName="spatial" Click="Spatial_Click"/>
                             <RadioMenuFlyoutItem Text="Hall" Tag="Hall" GroupName="spatial" Click="Spatial_Click"/>

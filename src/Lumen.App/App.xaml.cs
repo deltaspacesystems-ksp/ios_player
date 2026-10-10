@@ -30,7 +30,9 @@ public partial class App : Application
         if (a.Contains("--play") && Svc.Library.Count > 0)
         {
             var list = Svc.Library.OrderBy(t => t.Path).ToList();
-            Svc.Engine.SetQueue(list, 0);
+            int start = 0;
+            if (Arg("--find") is { } q) { int fi = list.FindIndex(t => t.Display.Contains(q, StringComparison.OrdinalIgnoreCase)); if (fi >= 0) start = fi; }
+            Svc.Engine.SetQueue(list, start);
             if (Arg("--seek") is { } sk && double.TryParse(sk, System.Globalization.CultureInfo.InvariantCulture, out var sec)) Svc.Engine.Seek(sec);
             if (a.Contains("--pause")) Svc.Engine.Pause();
         }

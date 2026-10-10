@@ -40,7 +40,7 @@ public static class Svc
         Log.Min = Enum.TryParse<Lumen.Core.LogLevel>(Settings.LogLevel, out var lv) ? lv : Lumen.Core.LogLevel.Info;
 
         Scanner = new LibraryScanner(DataDir) { Fallback = Lumen.Audio.FfmpegProbe.Read };
-        Lyrics = new LyricsService(Path.Combine(DataDir, "lyrics"), () => Settings.LyricsOnline);
+        Lyrics = new LyricsService(Path.Combine(DataDir, "lyrics"), () => new LyricsOptions(Settings.LyricsOnline, Settings.LyricsNetEase));
         Library = Scanner.LoadCached();
 
         Engine = new AudioEngine();
@@ -158,7 +158,7 @@ public static class Svc
         UI.TryEnqueue(() => LibraryChanged?.Invoke());
     }
 
-    public static async Task LoadLyricsAsync(Track? t)
+    public static async Task LoadLyricsAsync(Track? t, bool force = false)
     {
         _lyricsCts?.Cancel();
         CurrentLyrics = null;
@@ -168,15 +168,64 @@ public static class Svc
         LyricsChanged?.Invoke();
         try
         {
-            var l = await Lyrics.GetAsync(t, cts.Token);
-            if (cts.IsCancellationRequested) return;
-            CurrentLyrics = l;
+            // every better result replaces the previous one as soon as it is known (file → cache → web)
+            await foreach (var l in Lyrics.StreamAsync(t, force, cts.Token))
+            {
+                if (cts.IsCancellationRequested) return;
+                CurrentLyrics = l;
+                LyricsChanged?.Invoke();
+            }
         }
         catch (OperationCanceledException) { return; }
         catch (Exception e) { Log.W("lyrics", e.Message); }
+        if (cts.IsCancellationRequested) return;
         LyricsLoading = false;
         LyricsChanged?.Invoke();
+        _ = PrefetchNextAsync(cts.Token);
     }
+
+    /// <summary>While the current track plays, quietly download lyrics for the next one so it starts with lyrics ready.</summary>
+    private static async Task PrefetchNextAsync(CancellationToken ct)
+    {
+        if (!Settings.LyricsPrefetch || !Settings.LyricsOnline) return;
+        try
+        {
+            var q = Engine.Queue; int i = Engine.Index + 1;
+            if (i < 0 || i >= q.Count) return;
+            await Task.Delay(1500, ct);
+            if (await Lyrics.PrefetchAsync(q[i], ct)) Log.D("lyrics", $"prefetched {q[i]}");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e) { Log.W("lyrics", $"prefetch: {e.Message}"); }
+    }
+
+    private static CancellationTokenSource? _bulkCts;
+    public static bool BulkRunning => _bulkCts != null;
+
+    /// <summary>Downloads lyrics for the whole library in the background (about 2 requests per second), skipping what is cached.</summary>
+    public static async Task BulkLyricsAsync(IProgress<(int done, int total, int found)> progress)
+    {
+        if (_bulkCts != null) return;
+        var cts = _bulkCts = new CancellationTokenSource();
+        var tracks = Library.ToList();
+        int done = 0, found = 0;
+        try
+        {
+            foreach (var t in tracks)
+            {
+                cts.Token.ThrowIfCancellationRequested();
+                bool net = !Lyrics.IsCached(t);
+                if (net && await Lyrics.PrefetchAsync(t, cts.Token)) found++;
+                progress.Report((++done, tracks.Count, found));
+                if (net) await Task.Delay(450, cts.Token);
+            }
+        }
+        catch (OperationCanceledException) { }
+        finally { _bulkCts = null; }
+        Log.I("lyrics", $"bulk download finished: {done}/{tracks.Count}");
+    }
+
+    public static void CancelBulkLyrics() => _bulkCts?.Cancel();
 
     public static double LyricOffset(Track? t) => t != null && Settings.LyricsOffsets.TryGetValue(t.Path, out var v) ? v : 0;
 

@@ -59,7 +59,9 @@ public sealed partial class NowPlayingPage : Page
             ? "No lyrics found for this track.\nYou can import an .lrc file below."
             : "No lyrics in tags or next to the file.\nOnline lyrics are off (Settings → Lyrics).";
         Lyr.Show(Svc.CurrentLyrics, Svc.LyricsLoading, Svc.Settings.LyricsFontScale, hint);
-        SourceText.Text = Svc.CurrentLyrics is { IsEmpty: false } l ? $"{(l.Synced ? "Synced" : "Plain")} · {l.Source}" : "";
+        SourceText.Text = Svc.CurrentLyrics is { IsEmpty: false } l
+            ? $"{l.QualityLabel} · {l.Source}" + (Svc.LyricsLoading ? " · checking for better…" : "")
+            : "";
     }
 
     private void OnFrame(object? sender, object e)
@@ -76,6 +78,11 @@ public sealed partial class NowPlayingPage : Page
         eng.Mixer.CopyTap(_tap);
         var bars = _fft.Compute(_tap, Math.Clamp(Svc.Settings.VizBars, 8, 128), 48000, (float)Svc.Settings.VizGain, dt);
         Viz.Update(bars);
+    }
+
+    private async void Refresh_Click(object sender, RoutedEventArgs e)
+    {
+        if (_shown != null) await Svc.LoadLyricsAsync(_shown, force: true);
     }
 
     private void UpdateOffsetText() => OffText.Text = $"{Svc.LyricOffset(_shown):+0.0;-0.0;0.0} s";

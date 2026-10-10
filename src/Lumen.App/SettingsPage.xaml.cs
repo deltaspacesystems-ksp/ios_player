@@ -123,8 +123,8 @@ public sealed partial class SettingsPage : Page
 
         // ---------------- spatial audio
         _root.Children.Add(Header("Spatial audio"));
-        _root.Children.Add(ComboRow("Mode", new[] { "Off", "Wide", "Surround", "Hall", "Spatial3D" }, s.SpatialMode, v => s.SpatialMode = v));
-        _root.Children.Add(Note("Wide = stereo width · Surround = cinema-style rear field · Hall = concert-hall reverb · Spatial3D = virtual speakers around you (best on headphones)."));
+        _root.Children.Add(ComboRow("Mode", new[] { "Off", "Stage", "Wide", "Surround", "Hall", "Spatial3D" }, s.SpatialMode, v => s.SpatialMode = v));
+        _root.Children.Add(Note("Stage = best for speakers and headphones: solid bass, wider highs, extra air (mono-safe) · Wide = stereo width · Surround = cinema-style rear field · Hall = concert-hall reverb · Spatial3D = virtual speakers around you (best on headphones)."));
         _root.Children.Add(SliderRow("Amount", 0, 1, 0.05, s.SpatialAmount, v => $"{v * 100:0}%", v => s.SpatialAmount = (float)v));
         _root.Children.Add(SliderRow("Width", 0, 2, 0.05, s.SpatialWidth, v => $"{v:0.00}×", v => s.SpatialWidth = (float)v));
         _root.Children.Add(SliderRow("Room size", 0, 1, 0.05, s.SpatialRoom, v => $"{v * 100:0}%", v => s.SpatialRoom = (float)v));
@@ -133,6 +133,9 @@ public sealed partial class SettingsPage : Page
         // ---------------- lyrics
         _root.Children.Add(Header("Lyrics"));
         _root.Children.Add(ToggleRow("Fetch lyrics online (LRCLIB)", s.LyricsOnline, v => s.LyricsOnline = v, "Free, no account. Synced lyrics are cached next to the app data."));
+        _root.Children.Add(ToggleRow("Prefetch lyrics for the next track", s.LyricsPrefetch, v => s.LyricsPrefetch = v, "Downloads and caches lyrics while the current song plays, so the next one starts with lyrics ready."));
+        _root.Children.Add(ToggleRow("Extra source: NetEase (line-synced, unofficial)", s.LyricsNetEase, v => s.LyricsNetEase = v, "Used only when LRCLIB has no synced lyrics. Strict matching on title, artist and length."));
+        BuildLyricsCache();
         _root.Children.Add(ToggleRow("Word-by-word karaoke highlight", s.LyricsKaraoke, v => s.LyricsKaraoke = v, "Exact when the lyrics file has word timings (enhanced LRC); otherwise estimated per line."));
         _root.Children.Add(SliderRow("Lyrics size", 0.6, 1.8, 0.05, s.LyricsFontScale, v => $"{v * 100:0}%", v => s.LyricsFontScale = v));
 
@@ -177,6 +180,29 @@ public sealed partial class SettingsPage : Page
         Loaded += (_, _) => timer.Start();
         Unloaded += (_, _) => timer.Stop();
         _root.Children.Add(tail);
+    }
+
+    private void BuildLyricsCache()
+    {
+        var info = new TextBlock { Opacity = 0.75, FontSize = 12 };
+        void Refresh() { var st = Svc.Lyrics.GetStats(); info.Text = $"Lyrics cache: {st.Files} songs ({st.Bytes / 1024.0:0} KB), {st.Negative} remembered as not found"; }
+        Refresh();
+        var status = new TextBlock { Opacity = 0.75, FontSize = 12 };
+        var bulk = new Button { Content = "Download lyrics for the whole library" };
+        var cancel = new Button { Content = "Cancel", Visibility = Visibility.Collapsed };
+        var clear = new Button { Content = "Clear lyrics cache" };
+        bulk.Click += async (_, _) =>
+        {
+            bulk.IsEnabled = false; cancel.Visibility = Visibility.Visible;
+            var prog = new Progress<(int done, int total, int found)>(p => status.Text = $"{p.done}/{p.total} checked · {p.found} downloaded");
+            await Svc.BulkLyricsAsync(prog);
+            bulk.IsEnabled = true; cancel.Visibility = Visibility.Collapsed; Refresh();
+        };
+        cancel.Click += (_, _) => Svc.CancelBulkLyrics();
+        clear.Click += (_, _) => { Svc.Lyrics.ClearCache(); Refresh(); status.Text = "Cache cleared"; };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        row.Children.Add(bulk); row.Children.Add(cancel); row.Children.Add(clear);
+        _root.Children.Add(info); _root.Children.Add(row); _root.Children.Add(status);
     }
 
     private void RebuildFolders()

@@ -25,6 +25,8 @@ public sealed class AppSettings
     public bool Crossfeed { get; set; }
     // lyrics
     public bool LyricsOnline { get; set; } = true;
+    public bool LyricsNetEase { get; set; }               // optional 2nd source (unofficial, line-synced)
+    public bool LyricsPrefetch { get; set; } = true;      // fetch the next track in the queue ahead of time
     public double LyricsFontScale { get; set; } = 1.0;
     public bool LyricsKaraoke { get; set; } = true;
     public Dictionary<string, double> LyricsOffsets { get; set; } = new();   // per track path, seconds

@@ -1,8 +1,6 @@
 using System.Globalization;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace Lumen.Core;
 
@@ -30,6 +28,10 @@ public sealed class Lyrics
     public double OffsetSeconds { get; init; }
     public bool IsEmpty => Lines.Count == 0;
 
+    /// <summary>0 = none, 1 = plain text, 2 = line-synced, 3 = word-synced (timings from the source).</summary>
+    public int Quality => IsEmpty ? 0 : !Synced ? 1 : Lines.Any(l => l.WordsExact) ? 3 : 2;
+    public string QualityLabel => Quality switch { 3 => "Word-synced", 2 => "Line-synced (words estimated)", 1 => "Plain text", _ => "" };
+
     /// <summary>Index of the line active at <paramref name="seconds"/> (-1 before the first line).</summary>
     public int IndexAt(double seconds, double userOffset = 0)
     {
@@ -50,15 +52,38 @@ public sealed class Lyrics
 
 public static class LyricTiming
 {
-    /// <summary>Spreads <paramref name="text"/> over [start, end] by character weight, so un-timed words still get a karaoke sweep.</summary>
+    private static readonly string Vowels = "aeiouyàáâãäåæèéêëìíîïòóôõöøùúûüýÿąęśźżAEIOUYÀÁÂÃÄÅÆÈÉÊËÌÍÎÏÒÓÔÕÖØÙÚÛÜÝĄĘ";
+
+    /// <summary>Rough syllable count (vowel groups; every CJK character counts as one).</summary>
+    public static double Syllables(string word)
+    {
+        int count = 0; bool inV = false, anyLetter = false;
+        foreach (var ch in word)
+        {
+            if (ch >= 0x2E80) { count++; anyLetter = true; inV = false; continue; }      // CJK / kana / hangul
+            if (char.IsLetter(ch))
+            {
+                anyLetter = true;
+                bool v = Vowels.Contains(ch);
+                if (v && !inV) count++;
+                inV = v;
+            }
+            else inV = false;
+        }
+        if (!anyLetter) return 0.4;
+        return Math.Max(1, count);
+    }
+
+    /// <summary>Spreads <paramref name="text"/> over [start, end] by syllable weight, so un-timed words still get a natural karaoke sweep.</summary>
     public static IReadOnlyList<LyricWord> Estimate(string text, double start, double end)
     {
         var parts = Regex.Matches(text, @"\S+\s*").Select(m => m.Value).ToList();
         if (parts.Count == 0) return Array.Empty<LyricWord>();
-        // leave a short pause before the next line so the last word doesn't sing into it
         double span = Math.Max(0.2, end - start);
-        double sing = Math.Min(span * 0.92, Math.Max(0.3, parts.Sum(p => p.Trim().Length) * 0.075));
-        double total = parts.Sum(p => Weight(p));
+        double syll = parts.Sum(p => Syllables(p));
+        // a natural singing pace is ~0.24 s per syllable; never run into the next line
+        double sing = Math.Min(span * 0.92, Math.Max(0.35, syll * 0.24));
+        double total = parts.Sum(Weight);
         var list = new List<LyricWord>(parts.Count);
         double t = start;
         foreach (var p in parts)
@@ -70,7 +95,36 @@ public static class LyricTiming
         return list;
     }
 
-    private static double Weight(string w) => Math.Max(1, w.Trim().Length) + (w.TrimEnd().EndsWith(',') || w.TrimEnd().EndsWith('.') ? 1.5 : 0);
+    private static double Weight(string w)
+    {
+        var tw = w.TrimEnd();
+        double pause = tw.EndsWith(',') ? 0.5 : tw.EndsWith('.') || tw.EndsWith('!') || tw.EndsWith('?') ? 0.9 : 0;
+        return Syllables(w) + pause;
+    }
+
+    /// <summary>Fills in line ends and estimated words wherever the source gave no word timings.</summary>
+    public static void Finish(List<LyricLine> lines, double trackDuration)
+    {
+        for (int i = 0; i < lines.Count; i++)
+        {
+            var l = lines[i];
+            double end = i + 1 < lines.Count ? lines[i + 1].Time : (trackDuration > l.Time ? trackDuration : l.Time + 5);
+            l.End = end;
+            if (!l.WordsExact) l.Words = Estimate(l.Text, l.Time, end);
+        }
+    }
+}
+
+public static class LyricsFormat
+{
+    /// <summary>Picks a parser from the content: TTML (xml), YRC (<c>[ms,ms](ms,ms,0)word</c>) or LRC / enhanced LRC.</summary>
+    public static Lyrics Parse(string text, string source, double trackDuration = 0)
+    {
+        var t = text.TrimStart('﻿', ' ', '\r', '\n', '\t');
+        if (t.StartsWith('<') && t.Contains("<tt", StringComparison.OrdinalIgnoreCase)) return TtmlParser.Parse(t, source, trackDuration);
+        if (Regex.IsMatch(t, @"^\[\d+,\d+\]\(\d+,\d+,\d+\)", RegexOptions.Multiline)) return YrcParser.Parse(t, source, trackDuration);
+        return LrcParser.Parse(t, source, trackDuration);
+    }
 }
 
 public static class LrcParser
@@ -152,110 +206,103 @@ public static class LrcParser
             return new Lyrics { Lines = lines, Synced = false, Source = source, Title = title, Artist = artist };
 
         lines = lines.OrderBy(l => l.Time).ToList();
-        for (int i = 0; i < lines.Count; i++)
-        {
-            var l = lines[i];
-            double end = i + 1 < lines.Count ? lines[i + 1].Time : (trackDuration > l.Time ? trackDuration : l.Time + 5);
-            l.End = end;
-            if (!l.WordsExact) l.Words = LyricTiming.Estimate(l.Text, l.Time, end);
-        }
+        LyricTiming.Finish(lines, trackDuration);
         return new Lyrics { Lines = lines, Synced = true, Source = source, Title = title, Artist = artist, OffsetSeconds = offset };
     }
 }
 
-/// <summary>Finds lyrics: sidecar .lrc → embedded tag → cache → LRCLIB (free, no key).</summary>
-public sealed class LyricsService
+/// <summary>NetEase / "YRC" word-level lyrics: <c>[lineStartMs,lineDurMs](wordStartMs,wordDurMs,0)word...</c></summary>
+public static class YrcParser
 {
-    private static readonly HttpClient Http = CreateClient();
-    private readonly string _cacheDir;
-    private readonly Func<bool> _onlineEnabled;
+    private static readonly Regex LineRx = new(@"^\[(\d+),(\d+)\](.*)$", RegexOptions.Compiled);
+    private static readonly Regex WordRx = new(@"\((\d+),(\d+),-?\d+\)([^(]*)", RegexOptions.Compiled);
 
-    public LyricsService(string cacheDir, Func<bool>? onlineEnabled = null)
+    public static Lyrics Parse(string text, string source = "", double trackDuration = 0)
     {
-        _cacheDir = cacheDir;
-        _onlineEnabled = onlineEnabled ?? (() => true);
-        Directory.CreateDirectory(cacheDir);
+        var lines = new List<LyricLine>();
+        foreach (var raw in text.Replace("\r\n", "\n").Split('\n'))
+        {
+            var m = LineRx.Match(raw.Trim());
+            if (!m.Success) continue;
+            double start = long.Parse(m.Groups[1].Value) / 1000.0;
+            var words = new List<LyricWord>();
+            foreach (Match w in WordRx.Matches(m.Groups[3].Value))
+            {
+                double ws = long.Parse(w.Groups[1].Value) / 1000.0;
+                double wd = long.Parse(w.Groups[2].Value) / 1000.0;
+                words.Add(new LyricWord(ws, ws + wd, w.Groups[3].Value));
+            }
+            if (words.Count == 0) continue;
+            var l = new LyricLine { Time = start, Text = string.Concat(words.Select(x => x.Text)).Trim(), Words = words, WordsExact = true };
+            lines.Add(l);
+        }
+        lines = lines.OrderBy(l => l.Time).ToList();
+        LyricTiming.Finish(lines, trackDuration);
+        return new Lyrics { Lines = lines, Synced = lines.Count > 0, Source = source };
+    }
+}
+
+/// <summary>Apple-style TTML with per-word &lt;span begin end&gt; timings (also works for line-only TTML).</summary>
+public static class TtmlParser
+{
+    public static double? Time(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        s = s.Trim();
+        var inv = CultureInfo.InvariantCulture;
+        if (s.EndsWith("ms")) return double.TryParse(s[..^2], NumberStyles.Float, inv, out var ms) ? ms / 1000 : null;
+        if (s.EndsWith('s')) return double.TryParse(s[..^1], NumberStyles.Float, inv, out var sec) ? sec : null;
+        var parts = s.Split(':');
+        double total = 0;
+        foreach (var p in parts)
+        {
+            if (!double.TryParse(p, NumberStyles.Float, inv, out var v)) return null;
+            total = total * 60 + v;
+        }
+        return total;
     }
 
-    private static HttpClient CreateClient()
+    public static Lyrics Parse(string xml, string source = "", double trackDuration = 0)
     {
-        var c = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-        c.DefaultRequestHeaders.UserAgent.ParseAdd("Lumen/1.0 (https://github.com/deltaspacesystems-ksp/ios_player)");
-        return c;
-    }
-
-    private string CachePath(Track t)
-    {
-        var key = $"{t.Artist}|{t.Title}|{t.Album}|{(int)t.Duration}";
-        var hash = Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(Encoding.UTF8.GetBytes(key)))[..16];
-        return Path.Combine(_cacheDir, hash + ".lrc");
-    }
-
-    public async Task<Lyrics> GetAsync(Track t, CancellationToken ct = default)
-    {
-        var sidecar = System.IO.Path.ChangeExtension(t.Path, ".lrc");
-        if (File.Exists(sidecar))
+        XDocument doc;
+        try { doc = XDocument.Parse(xml, LoadOptions.PreserveWhitespace); }
+        catch { return new Lyrics(); }
+        var lines = new List<LyricLine>();
+        foreach (var p in doc.Descendants().Where(e => e.Name.LocalName == "p"))
         {
-            var l = LrcParser.Parse(await File.ReadAllTextAsync(sidecar, ct), "file", t.Duration);
-            if (!l.IsEmpty) return l;
-        }
-        try
-        {
-            using var f = TagLib.File.Create(t.Path);
-            var embedded = f.Tag.Lyrics;
-            if (!string.IsNullOrWhiteSpace(embedded))
+            var begin = Time((string?)p.Attribute("begin"));
+            if (begin == null) continue;
+            var words = new List<LyricWord>();
+            bool sawTimedSpan = false;
+            foreach (var node in p.Nodes())
             {
-                var l = LrcParser.Parse(embedded, "tag", t.Duration);
-                if (!l.IsEmpty) return l;
+                if (node is XElement span && span.Name.LocalName == "span")
+                {
+                    var role = span.Attributes().FirstOrDefault(a => a.Name.LocalName == "role")?.Value;
+                    var wb = Time((string?)span.Attribute("begin"));
+                    var we = Time((string?)span.Attribute("end"));
+                    var txt = span.Value;
+                    if (wb != null && we != null && txt.Length > 0)
+                    {
+                        sawTimedSpan = true;
+                        words.Add(new LyricWord(wb.Value, we.Value, role == "x-bg" ? "(" + txt.Trim() + ") " : txt));
+                    }
+                }
+                else if (node is XText t && words.Count > 0 && t.Value.Length > 0)
+                {
+                    // whitespace between spans = the space after the previous word
+                    var last = words[^1];
+                    if (!last.Text.EndsWith(' ')) words[^1] = last with { Text = last.Text + " " };
+                }
             }
+            string text = sawTimedSpan ? string.Concat(words.Select(w => w.Text)).Trim() : p.Value.Trim();
+            if (text.Length == 0) continue;
+            var l = new LyricLine { Time = begin.Value, End = Time((string?)p.Attribute("end")) ?? 0, Text = text };
+            if (sawTimedSpan) { l.Words = words; l.WordsExact = true; }
+            lines.Add(l);
         }
-        catch (Exception e) { Log.W("lyrics", $"tag read failed: {e.Message}"); }
-
-        var cache = CachePath(t);
-        if (File.Exists(cache))
-        {
-            var l = LrcParser.Parse(await File.ReadAllTextAsync(cache, ct), "cache", t.Duration);
-            if (!l.IsEmpty) return l;
-        }
-        if (!_onlineEnabled()) return new Lyrics();
-        try
-        {
-            var q = $"https://lrclib.net/api/get?track_name={Uri.EscapeDataString(t.Display)}&artist_name={Uri.EscapeDataString(t.Artist)}"
-                  + $"&album_name={Uri.EscapeDataString(t.Album)}&duration={(int)Math.Round(t.Duration)}";
-            LrclibItem? item = null;
-            using (var resp = await Http.GetAsync(q, ct))
-            {
-                if (resp.IsSuccessStatusCode) item = await resp.Content.ReadFromJsonAsync<LrclibItem>(cancellationToken: ct);
-            }
-            if (item == null)
-            {
-                var s = $"https://lrclib.net/api/search?track_name={Uri.EscapeDataString(t.Display)}&artist_name={Uri.EscapeDataString(t.Artist)}";
-                var list = await Http.GetFromJsonAsync<List<LrclibItem>>(s, ct);
-                item = list?.Where(i => Math.Abs((i.Duration ?? 0) - t.Duration) < 5)
-                            .OrderBy(i => string.IsNullOrWhiteSpace(i.SyncedLyrics) ? 1 : 0)
-                            .ThenBy(i => Math.Abs((i.Duration ?? 0) - t.Duration)).FirstOrDefault();
-            }
-            var text = !string.IsNullOrWhiteSpace(item?.SyncedLyrics) ? item!.SyncedLyrics : item?.PlainLyrics;
-            if (!string.IsNullOrWhiteSpace(text))
-            {
-                await File.WriteAllTextAsync(cache, text, ct);
-                Log.I("lyrics", $"LRCLIB hit for {t}");
-                return LrcParser.Parse(text, "lrclib", t.Duration);
-            }
-            Log.I("lyrics", $"no lyrics found for {t}");
-        }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception e) { Log.W("lyrics", $"LRCLIB failed: {e.Message}"); }
-        return new Lyrics();
-    }
-
-    public Task SaveSidecarAsync(Track t, string lrcText) =>
-        File.WriteAllTextAsync(System.IO.Path.ChangeExtension(t.Path, ".lrc"), lrcText);
-
-    private sealed class LrclibItem
-    {
-        [JsonPropertyName("syncedLyrics")] public string? SyncedLyrics { get; set; }
-        [JsonPropertyName("plainLyrics")] public string? PlainLyrics { get; set; }
-        [JsonPropertyName("duration")] public double? Duration { get; set; }
+        lines = lines.OrderBy(l => l.Time).ToList();
+        LyricTiming.Finish(lines, trackDuration);
+        return new Lyrics { Lines = lines, Synced = lines.Count > 0, Source = source };
     }
 }
