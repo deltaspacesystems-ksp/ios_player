@@ -16,6 +16,7 @@ public static class AudioExt
 /// <summary>Scans folders into <see cref="Track"/>s (tags via TagLib, cover art cached on disk) and persists the library as JSON.</summary>
 public sealed class LibraryScanner
 {
+    private static readonly object ArtLock = new();
     private readonly string _artDir;
     private readonly string _dbFile;
 
@@ -101,7 +102,7 @@ public sealed class LibraryScanner
                 var data = tag.Pictures[0].Data.Data;
                 var hash = Convert.ToHexString(SHA1.HashData(data))[..16];
                 var artPath = System.IO.Path.Combine(_artDir, hash + ".img");
-                if (!File.Exists(artPath)) File.WriteAllBytes(artPath, data);
+                lock (ArtLock) { if (!File.Exists(artPath)) File.WriteAllBytes(artPath, data); }
                 t.ArtPath = artPath;
             }
         }

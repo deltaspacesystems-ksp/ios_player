@@ -247,12 +247,10 @@ public sealed class Mixer : ISampleProvider
                     s *= pre;
                     for (int b = 0; b < 10; b++) s = _eq[c, b].Transform(s);
                 }
-                s *= vol;
-                // gentle limiter so EQ boosts never hard-clip
-                if (s > 0.98f || s < -0.98f) s = MathF.Tanh(s);
                 buffer[idx] = s;
             }
         }
+        // spectrum tap sits BEFORE the master volume so the visualizer does not shrink with the volume slider
         lock (_tapLock)
         {
             for (int i = 0; i < frames; i++)
@@ -260,6 +258,13 @@ public sealed class Mixer : ISampleProvider
                 _tap[_tapPos] = (buffer[i * 2] + buffer[i * 2 + 1]) * 0.5f;
                 _tapPos = (_tapPos + 1) % _tap.Length;
             }
+        }
+        for (int i = 0; i < frames * 2; i++)
+        {
+            float s = buffer[i] * vol;
+            // gentle limiter so EQ boosts never hard-clip
+            if (s > 0.98f || s < -0.98f) s = MathF.Tanh(s);
+            buffer[i] = s;
         }
     }
 }

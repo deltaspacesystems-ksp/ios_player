@@ -1,0 +1,51 @@
+name: Build Windows
+on:
+  push:
+    branches: [windows]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Build, test, publish
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          & ./scripts/get-ffmpeg.ps1 *>&1 | Tee-Object -FilePath build.log
+          dotnet test tests/Lumen.Tests -c Release -nologo 2>&1 | Tee-Object -FilePath build.log -Append
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          dotnet publish src/Lumen.App -c Release -r win-x64 --self-contained true -o publish -nologo 2>&1 | Tee-Object -FilePath build.log -Append
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Compress-Archive -Path publish\* -DestinationPath Lumen-win-x64.zip -CompressionLevel Optimal
+          "zip: " + [math]::Round((Get-Item Lumen-win-x64.zip).Length / 1MB) + " MB" | Tee-Object -FilePath build.log -Append
+      - name: Publish release
+        if: success()
+        shell: pwsh
+        run: |
+          gh release delete windows-latest --yes --cleanup-tag 2>$null
+          gh release create windows-latest Lumen-win-x64.zip --title "Lumen for Windows (latest build)" --notes "Commit $env:GITHUB_SHA. Unzip and run Lumen.exe." --prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Publish build report
+        if: always()
+        shell: pwsh
+        run: |
+          $status = "${{ job.status }}"
+          New-Item -ItemType Directory ../report | Out-Null
+          Set-Location ../report
+          git init -q -b build-logs-win
+          git config user.email "ci@lumen"; git config user.name "ci"
+          "status=$status`nsha=$env:GITHUB_SHA" | Set-Content status.txt
+          $log = Get-Content "$env:GITHUB_WORKSPACE/build.log" -ErrorAction SilentlyContinue
+          $log | Select-String -Pattern 'error|Failed|Passed!|warn.*CS|zip:' | Select-Object -First 120 | ForEach-Object { $_.Line } | Set-Content errors.txt
+          $log | Select-Object -Last 100 | Set-Content tail.txt
+          git add -A; git commit -q -m "report $env:GITHUB_SHA"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" build-logs-win

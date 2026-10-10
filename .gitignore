@@ -4,3 +4,5 @@ obj/
 *.user
 native/ffmpeg/
 *.log
+testdata/
+publish/

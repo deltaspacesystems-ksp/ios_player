@@ -36,6 +36,8 @@ public sealed class AudioEngine : IDisposable
     public int Index { get { lock (_q) return _index; } }
     public Track? Current { get { lock (_q) return _index >= 0 && _index < _queue.Count ? _queue[_index] : null; } }
     public bool IsPlaying => Mixer.Playing;
+    /// <summary>Output buffer latency; lyrics and visuals subtract it so they line up with what is heard.</summary>
+    public double OutputLatencySeconds => (_out?.LatencyMilliseconds ?? 0) / 1000.0;
     public double Position => Mixer.Active?.Position ?? 0;
     public double Duration
     {
