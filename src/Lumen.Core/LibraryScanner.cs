@@ -3,6 +3,8 @@ using System.Text.Json;
 
 namespace Lumen.Core;
 
+public sealed record ProbeResult(Track Track, byte[]? Art);
+
 public static class AudioExt
 {
     public static readonly HashSet<string> All = new(StringComparer.OrdinalIgnoreCase)
@@ -17,6 +19,8 @@ public static class AudioExt
 public sealed class LibraryScanner
 {
     private static readonly object ArtLock = new();
+    /// <summary>Used when TagLib cannot read a file (set by the app to an FFmpeg-based probe).</summary>
+    public Func<string, ProbeResult?>? Fallback { get; set; }
     private readonly string _artDir;
     private readonly string _dbFile;
 
@@ -85,9 +89,18 @@ public sealed class LibraryScanner
         return Read(path, m);
     }
 
+    private string SaveArt(byte[] data)
+    {
+        var hash = Convert.ToHexString(SHA1.HashData(data))[..16];
+        var artPath = System.IO.Path.Combine(_artDir, hash + ".img");
+        lock (ArtLock) { if (!File.Exists(artPath)) File.WriteAllBytes(artPath, data); }
+        return artPath;
+    }
+
     private Track Read(string path, long mtime)
     {
         var t = new Track { Path = path, Modified = mtime };
+        bool tagLibOk = false;
         try
         {
             using var f = TagLib.File.Create(path);
@@ -103,18 +116,33 @@ public sealed class LibraryScanner
             t.Bitrate = f.Properties.AudioBitrate;
             t.SampleRate = f.Properties.AudioSampleRate;
             if (!double.IsNaN(tag.ReplayGainTrackGain)) t.ReplayGainDb = tag.ReplayGainTrackGain;
-            if (tag.Pictures.Length > 0)
-            {
-                var data = tag.Pictures[0].Data.Data;
-                var hash = Convert.ToHexString(SHA1.HashData(data))[..16];
-                var artPath = System.IO.Path.Combine(_artDir, hash + ".img");
-                lock (ArtLock) { if (!File.Exists(artPath)) File.WriteAllBytes(artPath, data); }
-                t.ArtPath = artPath;
-            }
+            if (tag.Pictures.Length > 0) t.ArtPath = SaveArt(tag.Pictures[0].Data.Data);
+            tagLibOk = true;
         }
         catch (Exception e)
         {
-            Log.W("library", $"tags failed for {System.IO.Path.GetFileName(path)}: {e.Message}");
+            Log.D("library", $"TagLib failed for {System.IO.Path.GetFileName(path)}: {e.Message}");
+        }
+        if ((!tagLibOk || t.Duration <= 0) && Fallback != null)
+        {
+            var r = Fallback(path);
+            if (r != null)
+            {
+                var p = r.Track;
+                if (string.IsNullOrWhiteSpace(t.Title)) t.Title = p.Title;
+                if (string.IsNullOrWhiteSpace(t.Artist)) t.Artist = p.Artist;
+                if (string.IsNullOrWhiteSpace(t.AlbumArtist)) t.AlbumArtist = p.AlbumArtist;
+                if (string.IsNullOrWhiteSpace(t.Album)) t.Album = p.Album;
+                if (string.IsNullOrWhiteSpace(t.Genre)) t.Genre = p.Genre;
+                if (t.Year == 0) t.Year = p.Year;
+                if (t.TrackNumber == 0) t.TrackNumber = p.TrackNumber;
+                if (t.Duration <= 0) t.Duration = p.Duration;
+                if (t.Bitrate == 0) t.Bitrate = p.Bitrate;
+                if (t.SampleRate == 0) t.SampleRate = p.SampleRate;
+                t.ReplayGainDb ??= p.ReplayGainDb;
+                if (string.IsNullOrEmpty(t.ArtPath) && r.Art is { Length: > 0 }) t.ArtPath = SaveArt(r.Art);
+            }
+            else Log.W("library", $"could not read tags for {System.IO.Path.GetFileName(path)}");
         }
         if (string.IsNullOrWhiteSpace(t.Title))
         {

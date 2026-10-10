@@ -39,7 +39,7 @@ public static class Svc
         Settings = AppSettings.Load(Path.Combine(DataDir, "settings.json"));
         Log.Min = Enum.TryParse<Lumen.Core.LogLevel>(Settings.LogLevel, out var lv) ? lv : Lumen.Core.LogLevel.Info;
 
-        Scanner = new LibraryScanner(DataDir);
+        Scanner = new LibraryScanner(DataDir) { Fallback = Lumen.Audio.FfmpegProbe.Read };
         Lyrics = new LyricsService(Path.Combine(DataDir, "lyrics"), () => Settings.LyricsOnline);
         Library = Scanner.LoadCached();
 

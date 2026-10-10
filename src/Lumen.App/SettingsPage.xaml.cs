@@ -5,8 +5,8 @@ using Windows.ApplicationModel.DataTransfer;
 
 namespace Lumen.App;
 
-/// <summary>Settings built in code (keeps the many rows compact and easy to extend).</summary>
-public sealed class SettingsPage : Page
+/// <summary>Settings: a XAML page (so navigation can create it) whose rows are built in code.</summary>
+public sealed partial class SettingsPage : Page
 {
     private readonly StackPanel _root = new() { Spacing = 8, Padding = new Thickness(28, 12, 28, 40), MaxWidth = 900, HorizontalAlignment = HorizontalAlignment.Left };
     private StackPanel _folders = null!;
@@ -23,7 +23,8 @@ public sealed class SettingsPage : Page
 
     public SettingsPage()
     {
-        Content = new ScrollViewer { Content = _root };
+        InitializeComponent();
+        Host.Content = _root;
         Build();
     }
 
