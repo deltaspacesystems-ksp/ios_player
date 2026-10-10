@@ -1,0 +1,2 @@
+Passed!  - Failed:     0, Passed:    35, Skipped:     0, Total:    35, Duration: 1 s - Lumen.Tests.dll (net10.0)
+zip: 171 MB
