@@ -79,6 +79,12 @@ public sealed class LibraryScanner
         return list;
     }
 
+    public Track ReadTrack(string path)
+    {
+        long m = 0; try { m = File.GetLastWriteTimeUtc(path).Ticks; } catch { }
+        return Read(path, m);
+    }
+
     private Track Read(string path, long mtime)
     {
         var t = new Track { Path = path, Modified = mtime };

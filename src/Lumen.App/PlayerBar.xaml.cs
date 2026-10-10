@@ -46,6 +46,8 @@ public sealed partial class PlayerBar : UserControl
         ShuffleBtn.IsChecked = e.Shuffle;
         RepeatIcon.Glyph = e.Repeat == RepeatMode.One ? "" : "";
         RepeatBtn.Opacity = e.Repeat == RepeatMode.Off ? 0.55 : 1;
+        SleepBtn.Opacity = e.SleepAt != null || e.SleepAtEndOfTrack ? 1 : 0.55;
+        ToolTipService.SetToolTip(SleepBtn, e.SleepAt is DateTime at ? $"Sleep at {at.ToLocalTime():HH:mm}" : e.SleepAtEndOfTrack ? "Sleep after this track" : "Sleep timer");
     }
 
     private void UpdateSettings()
@@ -111,6 +113,17 @@ public sealed partial class PlayerBar : UserControl
     private void Repeat_Click(object sender, RoutedEventArgs e)
     {
         Svc.Engine.Repeat = Svc.Engine.Repeat switch { RepeatMode.Off => RepeatMode.All, RepeatMode.All => RepeatMode.One, _ => RepeatMode.Off };
+        UpdateState();
+    }
+
+    private void Sleep_Click(object sender, RoutedEventArgs e)
+    {
+        switch ((string)((MenuFlyoutItem)sender).Tag)
+        {
+            case "off": Svc.Engine.SetSleep(null); break;
+            case "end": Svc.Engine.SetSleep(null, atEndOfTrack: true); break;
+            case var m: Svc.Engine.SetSleep(TimeSpan.FromMinutes(int.Parse(m))); break;
+        }
         UpdateState();
     }
 

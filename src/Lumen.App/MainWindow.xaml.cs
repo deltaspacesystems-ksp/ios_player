@@ -1,7 +1,11 @@
 using Microsoft.UI.Composition.SystemBackdrops;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Input;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 using WinRT.Interop;
 
 namespace Lumen.App;
@@ -21,7 +25,7 @@ public sealed partial class MainWindow : Window
         ApplyAppearance();
         Svc.SettingsChanged += ApplyAppearance;
         Nav.SelectedItem = Nav.MenuItems[0];
-        Closed += (_, _) => { Svc.Engine.Dispose(); Svc.Settings.Save(); };
+        Closed += (_, _) => { Svc.SaveSession(); Svc.Engine.Dispose(); Svc.Settings.Save(); };
     }
 
     public void Navigate(string tag)
@@ -40,6 +44,47 @@ public sealed partial class MainWindow : Window
             "None" => null,
             _ => new MicaBackdrop { Kind = MicaKind.BaseAlt },
         };
+    }
+
+    private void Root_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Contains(StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = DataPackageOperation.Copy;
+            e.DragUIOverride.Caption = "Play in Lumen";
+        }
+    }
+
+    private async void Root_Drop(object sender, DragEventArgs e)
+    {
+        if (!e.DataView.Contains(StandardDataFormats.StorageItems)) return;
+        var items = await e.DataView.GetStorageItemsAsync();
+        var paths = items.Select(i => i.Path).Where(p => !string.IsNullOrEmpty(p)).ToList();
+        Svc.PlayFiles(paths);
+    }
+
+    private void Root_KeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        var src = e.OriginalSource as DependencyObject;
+        for (var d = src; d != null; d = VisualTreeHelper.GetParent(d))
+            if (d is TextBox or AutoSuggestBox or ComboBox or Slider) return;   // let inputs keep their keys
+        var ctrl = InputKeyboardSource.GetKeyStateForCurrentThread(VirtualKey.Control).HasFlag(Windows.UI.Core.CoreVirtualKeyStates.Down);
+        var eng = Svc.Engine;
+        switch (e.Key)
+        {
+            case VirtualKey.Space: eng.Toggle(); break;
+            case VirtualKey.Right when ctrl: eng.Next(); break;
+            case VirtualKey.Left when ctrl: eng.Previous(); break;
+            case VirtualKey.Right: eng.Seek(eng.Position + 5); break;
+            case VirtualKey.Left: eng.Seek(eng.Position - 5); break;
+            case VirtualKey.Up: Svc.Settings.Volume = Math.Min(1, Svc.Settings.Volume + 0.05f); Svc.ApplySettings(); break;
+            case VirtualKey.Down: Svc.Settings.Volume = Math.Max(0, Svc.Settings.Volume - 0.05f); Svc.ApplySettings(); break;
+            case VirtualKey.M: Svc.Settings.Volume = Svc.Settings.Volume > 0 ? 0 : 0.6f; Svc.ApplySettings(); break;
+            case VirtualKey.L: Navigate("now"); break;
+            case VirtualKey.Q: Navigate("queue"); break;
+            default: return;
+        }
+        e.Handled = true;
     }
 
     private void Nav_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)

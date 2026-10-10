@@ -27,6 +27,7 @@ public static class Svc
     public static event Action? PlaybackStateChanged;
 
     private static CancellationTokenSource? _lyricsCts;
+    private static System.Threading.Timer? _sessionTimer;
 
     public static void Init(DispatcherQueue ui)
     {
@@ -48,7 +49,9 @@ public static class Svc
         Engine.Error += msg => Log.E("engine", msg);
         ApplySettings();
         Log.I("app", $"library: {Library.Count} cached tracks, {Settings.Folders.Count} folder(s)");
+        RestoreSession();
         _ = RescanAsync();
+        _sessionTimer = new System.Threading.Timer(_ => SaveSession(), null, 15000, 15000);
     }
 
     public static void ApplySettings()
@@ -63,6 +66,70 @@ public static class Svc
         Engine.Mixer.SetEq(Settings.EqGains, Settings.Preamp);
         Log.Min = Enum.TryParse<Lumen.Core.LogLevel>(Settings.LogLevel, out var lv) ? lv : Lumen.Core.LogLevel.Info;
         SettingsChanged?.Invoke();
+    }
+
+    // ---------------------------------------------------------------- opening files / session
+
+    public static List<Track> TracksFromPaths(IEnumerable<string> paths)
+    {
+        var files = new List<string>();
+        foreach (var p in paths)
+        {
+            if (Directory.Exists(p)) files.AddRange(Directory.EnumerateFiles(p, "*.*", SearchOption.AllDirectories).Where(AudioExt.IsAudio).OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+            else if (File.Exists(p) && AudioExt.IsAudio(p)) files.Add(p);
+        }
+        var byPath = Library.GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        return files.Select(f => byPath.TryGetValue(f, out var t) ? t : Scanner.ReadTrack(f)).ToList();
+    }
+
+    public static void PlayFiles(IEnumerable<string> paths)
+    {
+        var list = TracksFromPaths(paths);
+        if (list.Count == 0) return;
+        Log.I("app", $"open {list.Count} file(s)");
+        Engine.SetQueue(list, 0);
+    }
+
+    private sealed class SessionData
+    {
+        public List<string> Paths { get; set; } = new();
+        public int Index { get; set; }
+        public double Position { get; set; }
+        public bool Shuffle { get; set; }
+        public string Repeat { get; set; } = "Off";
+    }
+
+    private static string SessionFile => Path.Combine(DataDir, "session.json");
+
+    public static void SaveSession()
+    {
+        try
+        {
+            var q = Engine.Queue;
+            if (q.Count == 0) return;
+            var d = new SessionData { Paths = q.Select(t => t.Path).ToList(), Index = Engine.Index, Position = Engine.Position, Shuffle = Engine.Shuffle, Repeat = Engine.Repeat.ToString() };
+            File.WriteAllText(SessionFile, System.Text.Json.JsonSerializer.Serialize(d));
+        }
+        catch (Exception e) { Log.W("session", $"save failed: {e.Message}"); }
+    }
+
+    public static void RestoreSession()
+    {
+        try
+        {
+            if (!File.Exists(SessionFile) || Engine.Queue.Count > 0) return;
+            var d = System.Text.Json.JsonSerializer.Deserialize<SessionData>(File.ReadAllText(SessionFile));
+            if (d == null || d.Paths.Count == 0) return;
+            var byPath = Library.GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase).ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+            var tracks = d.Paths.Where(File.Exists).Select(p => byPath.TryGetValue(p, out var t) ? t : Scanner.ReadTrack(p)).ToList();
+            if (tracks.Count == 0) return;
+            int idx = Math.Clamp(d.Index, 0, tracks.Count - 1);
+            Engine.Repeat = Enum.TryParse<RepeatMode>(d.Repeat, out var r) ? r : RepeatMode.Off;
+            Engine.SetQueue(tracks, idx, play: false);
+            if (d.Position > 1) Engine.Seek(d.Position);
+            Log.I("session", $"restored {tracks.Count} tracks, index {idx}, at {d.Position:0}s");
+        }
+        catch (Exception e) { Log.W("session", $"restore failed: {e.Message}"); }
     }
 
     public static void SaveSettings() { Settings.Save(); ApplySettings(); }

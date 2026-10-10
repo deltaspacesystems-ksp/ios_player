@@ -49,6 +49,46 @@ public sealed class AudioEngine : IDisposable
         }
     }
 
+    // ---- sleep timer ----
+    private DateTime? _sleepAt;
+    private bool _sleepAtEnd;
+    private double _sleepFadeFrom = -1;
+    public DateTime? SleepAt => _sleepAt;
+    public bool SleepAtEndOfTrack => _sleepAtEnd;
+
+    public void SetSleep(TimeSpan? after, bool atEndOfTrack = false)
+    {
+        _sleepAt = after.HasValue ? DateTime.UtcNow + after.Value : null;
+        _sleepAtEnd = atEndOfTrack;
+        _sleepFadeFrom = -1;
+        StateChanged?.Invoke();
+    }
+
+    private void TickSleep()
+    {
+        if (_sleepAt is DateTime at)
+        {
+            var left = (at - DateTime.UtcNow).TotalSeconds;
+            if (left <= 8 && left > 0)
+            {
+                if (_sleepFadeFrom < 0) _sleepFadeFrom = Settings.Volume;
+                Mixer.Volume = (float)(_sleepFadeFrom * Math.Max(0, left / 8));
+            }
+            else if (left <= 0) FinishSleep();
+        }
+        else if (_sleepAtEnd && Mixer.Active is { } d && Duration > 0 && Duration - d.Position < 0.2) { FinishSleep(); }
+    }
+
+    private void FinishSleep()
+    {
+        Pause();
+        _sleepAt = null; _sleepAtEnd = false;
+        Mixer.Volume = Settings.Volume;
+        _sleepFadeFrom = -1;
+        Log.I("engine", "sleep timer fired");
+        StateChanged?.Invoke();
+    }
+
     public event Action<Track?, int>? TrackChanged;
     public event Action? StateChanged;
     public event Action<string>? Error;
@@ -225,6 +265,7 @@ public sealed class AudioEngine : IDisposable
         {
             var active = Mixer.Active;
             if (active == null || !Mixer.Playing) return;
+            TickSleep();
             double dur = Duration;
             if (dur <= 0) return;
             double remaining = dur - active.Position;
@@ -252,7 +293,7 @@ public sealed class AudioEngine : IDisposable
                     Track t;
                     lock (_q) { _index = n; t = _queue[n]; }
                     _preparing = null;
-                    Log.I("engine", $"crossfade → {t} ({remaining:0.0}s)");
+                    Log.I("engine", $"crossfade -> {t} ({remaining:0.0}s)");
                     TrackChanged?.Invoke(t, n);
                 }
             }
@@ -273,7 +314,7 @@ public sealed class AudioEngine : IDisposable
                 if (i >= 0) { if (_index != i) { _index = i; idx = i; } }
             }
         }
-        if (idx >= 0) { Log.I("engine", $"gapless → {t}"); TrackChanged?.Invoke(t, idx); }
+        if (idx >= 0) { Log.I("engine", $"gapless -> {t}"); TrackChanged?.Invoke(t, idx); }
         _preparing = null;
     }
 

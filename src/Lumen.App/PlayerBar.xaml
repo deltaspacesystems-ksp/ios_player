@@ -62,6 +62,21 @@
                         <TextBlock x:Name="XfadeText" FontSize="12"/>
                     </StackPanel>
                 </Button>
+                <Button x:Name="SleepBtn" Background="Transparent" BorderThickness="0" ToolTipService.ToolTip="Sleep timer">
+                    <FontIcon Glyph="&#xE708;" FontSize="16"/>
+                    <Button.Flyout>
+                        <MenuFlyout>
+                            <MenuFlyoutItem Text="15 minutes" Tag="15" Click="Sleep_Click"/>
+                            <MenuFlyoutItem Text="30 minutes" Tag="30" Click="Sleep_Click"/>
+                            <MenuFlyoutItem Text="45 minutes" Tag="45" Click="Sleep_Click"/>
+                            <MenuFlyoutItem Text="1 hour" Tag="60" Click="Sleep_Click"/>
+                            <MenuFlyoutItem Text="2 hours" Tag="120" Click="Sleep_Click"/>
+                            <MenuFlyoutItem Text="End of this track" Tag="end" Click="Sleep_Click"/>
+                            <MenuFlyoutSeparator/>
+                            <MenuFlyoutItem Text="Off" Tag="off" Click="Sleep_Click"/>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
                 <Button x:Name="MuteBtn" Click="Mute_Click" Background="Transparent" BorderThickness="0">
                     <FontIcon x:Name="VolIcon" Glyph="&#xE767;" FontSize="16"/>
                 </Button>
